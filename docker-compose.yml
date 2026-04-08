@@ -1,6 +1,6 @@
 services:
   env-hub:
-    build: .
+    image: ghcr.io/xmzo/env-hub:latest
     restart: unless-stopped
     ports:
       - "8080:8080"
