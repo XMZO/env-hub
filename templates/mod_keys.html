@@ -1,0 +1,40 @@
+<h2>{{t .T "ssh_keys"}}</h2>
+
+{{$keys := .Data}}
+{{if $keys}}
+<table>
+    <thead>
+        <tr><th>{{t .T "key_name"}}</th><th>{{t .T "key_content"}}</th><th>{{t .T "key_created"}}</th><th>{{t .T "actions"}}</th></tr>
+    </thead>
+    <tbody>
+        {{range $keys}}
+        <tr>
+            <td>{{.Name}}</td>
+            <td class="key-text">{{truncate .Key 60}}</td>
+            <td>{{.CreatedAt.Format "2006-01-02 15:04"}}</td>
+            <td>
+                <form method="POST" action="/admin" class="inline" onsubmit="return confirm('{{t $.T "delete_key_confirm"}}')">
+                    <input type="hidden" name="module" value="keys">
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="id" value="{{.ID}}">
+                    <button type="submit" class="delete-btn">{{t $.T "delete"}}</button>
+                </form>
+            </td>
+        </tr>
+        {{end}}
+    </tbody>
+</table>
+{{else}}
+<p>{{t .T "no_keys"}}</p>
+{{end}}
+
+<h3>{{t .T "add_key"}}</h3>
+<form method="POST" action="/admin">
+    <input type="hidden" name="module" value="keys">
+    <input type="hidden" name="action" value="add">
+    <label for="key_name">{{t .T "key_name"}}</label>
+    <input type="text" id="key_name" name="name" placeholder="{{t .T "name_placeholder"}}" required>
+    <label for="key_content">{{t .T "key_content"}}</label>
+    <textarea id="key_content" name="key" rows="3" placeholder="{{t .T "key_placeholder"}}" required></textarea>
+    <button type="submit">{{t .T "add_key"}}</button>
+</form>

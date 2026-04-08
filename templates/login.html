@@ -1,24 +1,35 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="{{index .T "lang_code"}}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>env.moe — 登录</title>
-    <link rel="stylesheet" href="https://unpkg.com/sakura.css/css/sakura-dark.css">
+    <title>{{t .T "site_title"}} — {{t .T "login_title"}}</title>
     <style>
-        .login-box { max-width: 400px; margin: 4em auto; }
-        .error { color: #e74c3c; margin-bottom: 1em; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:system-ui,sans-serif;background:#1a1a2e;color:#e0e0e0;display:flex;justify-content:center;align-items:center;min-height:100vh}
+        .login-box{width:100%;max-width:360px;padding:1em}
+        h1{color:#f0f0f0;margin-bottom:.2em}
+        h2{color:#aaa;font-size:1em;margin-bottom:1.5em;font-weight:normal}
+        label{display:block;margin-bottom:.3em;font-size:.9em;color:#aaa}
+        input{width:100%;padding:.5em;background:#16213e;border:1px solid #333;border-radius:4px;color:#e0e0e0;font-size:1em;margin-bottom:1em}
+        input:focus{outline:none;border-color:#7fdbca}
+        button{width:100%;padding:.6em;background:#7fdbca;color:#1a1a2e;border:none;border-radius:4px;font-size:1em;cursor:pointer;font-weight:bold}
+        button:hover{opacity:.9}
+        .error{color:#e74c3c;margin-bottom:1em;font-size:.9em}
+        .lang{position:absolute;top:1em;right:1em;font-size:.85em}
+        a{color:#7fdbca}
     </style>
 </head>
 <body>
+    <a class="lang" href="/lang?to={{index .T "lang_code"}}">{{t .T "lang_switch"}}</a>
     <div class="login-box">
-        <h1>env.moe</h1>
-        <h2>管理后台</h2>
+        <h1>{{t .T "site_title"}}</h1>
+        <h2>{{t .T "admin_panel"}}</h2>
         {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
         <form method="POST" action="/admin/login">
-            <label for="token">Token</label>
-            <input type="password" id="token" name="token" placeholder="输入管理 Token" required autofocus>
-            <button type="submit">登录</button>
+            <label for="token">{{t .T "token"}}</label>
+            <input type="password" id="token" name="token" placeholder="{{t .T "token_placeholder"}}" required autofocus>
+            <button type="submit">{{t .T "login_btn"}}</button>
         </form>
     </div>
 </body>

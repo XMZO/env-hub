@@ -1,28 +1,34 @@
 package main
 
 import (
+	"compress/gzip"
 	"net/http"
+	"strings"
+	"sync"
 	"time"
 )
 
+// --- Auth ---
+
+func setAuthCookie(w http.ResponseWriter, token string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "admin_token",
+		Value:    token,
+		Path:     "/admin",
+		HttpOnly: true,
+		MaxAge:   int(30 * 24 * time.Hour / time.Second),
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
 func (a *app) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Check query param token
 		if token := r.URL.Query().Get("token"); token == a.adminToken {
-			http.SetCookie(w, &http.Cookie{
-				Name:     "admin_token",
-				Value:    a.adminToken,
-				Path:     "/admin",
-				HttpOnly: true,
-				MaxAge:   int(30 * 24 * time.Hour / time.Second),
-				SameSite: http.SameSiteLaxMode,
-			})
-			// Redirect to strip token from URL
+			setAuthCookie(w, a.adminToken)
 			http.Redirect(w, r, "/admin", http.StatusFound)
 			return
 		}
 
-		// Check cookie
 		cookie, err := r.Cookie("admin_token")
 		if err != nil || cookie.Value != a.adminToken {
 			http.Redirect(w, r, "/admin/login", http.StatusFound)
@@ -32,3 +38,54 @@ func (a *app) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 		next(w, r)
 	}
 }
+
+// --- Security headers ---
+
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// --- Gzip ---
+
+var gzPool = sync.Pool{
+	New: func() any {
+		w, _ := gzip.NewWriterLevel(nil, gzip.BestSpeed)
+		return w
+	},
+}
+
+type gzipResponseWriter struct {
+	http.ResponseWriter
+	gz *gzip.Writer
+}
+
+func (w *gzipResponseWriter) Write(b []byte) (int, error) {
+	return w.gz.Write(b)
+}
+
+func gzipMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		gz := gzPool.Get().(*gzip.Writer)
+		gz.Reset(w)
+
+		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Set("Vary", "Accept-Encoding")
+		w.Header().Del("Content-Length")
+
+		next.ServeHTTP(&gzipResponseWriter{ResponseWriter: w, gz: gz}, r)
+
+		gz.Close()
+		gzPool.Put(gz)
+	})
+}
+

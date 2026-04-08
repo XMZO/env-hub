@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 )
 
@@ -15,125 +13,124 @@ func (a *app) handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	a.tmpl.ExecuteTemplate(w, "index.html", nil)
+	lang := detectLang(r, a.i18n.fallback)
+	data := map[string]any{
+		"T": a.i18n.GetLang(lang),
+	}
+	if err := a.tmpl.ExecuteTemplate(w, "index.html", data); err != nil {
+		log.Printf("template index error: %v", err)
+	}
 }
 
 func (a *app) handleHealthz(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	fmt.Fprint(w, "ok")
+	w.Write([]byte("ok"))
 }
 
-func (a *app) handleKeys(w http.ResponseWriter, r *http.Request) {
-	keys, err := getAllKeysText(a.db)
-	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		log.Printf("handleKeys error: %v", err)
-		return
+func (a *app) handleLangSwitch(w http.ResponseWriter, r *http.Request) {
+	lang := r.URL.Query().Get("to")
+	// Validate against available languages
+	valid := false
+	for _, l := range a.i18n.Langs() {
+		if l == lang {
+			valid = true
+			break
+		}
 	}
-	if keys == "" {
-		http.Error(w, "no keys configured", http.StatusNotFound)
-		return
+	if !valid {
+		lang = a.i18n.fallback
 	}
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	fmt.Fprint(w, keys)
+	setLangCookie(w, lang)
+
+	// Only redirect to same-origin paths, prevent open redirect
+	ref := r.Header.Get("Referer")
+	if ref == "" || !strings.HasPrefix(ref, "/") {
+		// Parse referer to extract path only
+		ref = "/"
+		if raw := r.Header.Get("Referer"); raw != "" {
+			// Extract path portion only for safety
+			if idx := strings.Index(raw, "://"); idx != -1 {
+				if pathIdx := strings.Index(raw[idx+3:], "/"); pathIdx != -1 {
+					ref = raw[idx+3+pathIdx:]
+				}
+			}
+		}
+	}
+	http.Redirect(w, r, ref, http.StatusFound)
 }
 
 // --- Admin handlers ---
 
 func (a *app) handleLoginPage(w http.ResponseWriter, r *http.Request) {
-	a.tmpl.ExecuteTemplate(w, "login.html", nil)
+	lang := detectLang(r, a.i18n.fallback)
+	data := map[string]any{
+		"T":     a.i18n.GetLang(lang),
+		"Error": "",
+	}
+	if err := a.tmpl.ExecuteTemplate(w, "login.html", data); err != nil {
+		log.Printf("template login error: %v", err)
+	}
 }
 
 func (a *app) handleLogin(w http.ResponseWriter, r *http.Request) {
+	lang := detectLang(r, a.i18n.fallback)
 	token := strings.TrimSpace(r.FormValue("token"))
 	if token != a.adminToken {
-		a.tmpl.ExecuteTemplate(w, "login.html", map[string]string{"Error": "Token 不正确"})
+		data := map[string]any{
+			"T":     a.i18n.GetLang(lang),
+			"Error": a.i18n.T(lang, "token_error"),
+		}
+		if err := a.tmpl.ExecuteTemplate(w, "login.html", data); err != nil {
+			log.Printf("template login error: %v", err)
+		}
 		return
 	}
-	http.SetCookie(w, &http.Cookie{
-		Name:     "admin_token",
-		Value:    a.adminToken,
-		Path:     "/admin",
-		HttpOnly: true,
-		MaxAge:   30 * 24 * 3600,
-		SameSite: http.SameSiteLaxMode,
-	})
+	setAuthCookie(w, a.adminToken)
 	http.Redirect(w, r, "/admin", http.StatusFound)
 }
 
 func (a *app) handleAdmin(w http.ResponseWriter, r *http.Request) {
-	keys, err := listKeys(a.db)
-	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		log.Printf("handleAdmin listKeys error: %v", err)
-		return
+	lang := detectLang(r, a.i18n.fallback)
+	t := a.i18n.GetLang(lang)
+
+	var moduleViews []ModuleView
+	for _, m := range a.modules {
+		tmplName := m.AdminTemplateName()
+		if tmplName == "" {
+			continue
+		}
+		data, err := m.AdminData()
+		if err != nil {
+			log.Printf("module %s AdminData error: %v", m.Name(), err)
+			continue
+		}
+		moduleViews = append(moduleViews, ModuleView{
+			Name:     m.Name(),
+			Template: tmplName,
+			T:        t,
+			Data:     data,
+		})
 	}
-	scripts, err := listScripts(a.db)
-	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		log.Printf("handleAdmin listScripts error: %v", err)
-		return
+
+	pageData := map[string]any{
+		"T":       t,
+		"Modules": moduleViews,
 	}
-	data := map[string]any{
-		"Keys":    keys,
-		"Scripts": scripts,
+	if err := a.tmpl.ExecuteTemplate(w, "admin.html", pageData); err != nil {
+		log.Printf("template admin error: %v", err)
 	}
-	a.tmpl.ExecuteTemplate(w, "admin.html", data)
 }
 
 func (a *app) handleAdminPost(w http.ResponseWriter, r *http.Request) {
+	moduleName := r.FormValue("module")
 	action := r.FormValue("action")
 
-	switch action {
-	case "add_key":
-		name := strings.TrimSpace(r.FormValue("name"))
-		key := strings.TrimSpace(r.FormValue("key"))
-		if name == "" || key == "" {
-			http.Redirect(w, r, "/admin", http.StatusFound)
-			return
-		}
-		if err := addKey(a.db, name, key); err != nil {
-			log.Printf("addKey error: %v", err)
-		}
-
-	case "delete_key":
-		id, _ := strconv.ParseInt(r.FormValue("id"), 10, 64)
-		if id > 0 {
-			if err := deleteKey(a.db, id); err != nil {
-				log.Printf("deleteKey error: %v", err)
+	for _, m := range a.modules {
+		if m.Name() == moduleName {
+			if err := m.AdminAction(action, r); err != nil {
+				log.Printf("module %s action %s error: %v", moduleName, action, err)
 			}
-		}
-
-	case "save_script":
-		path := strings.TrimSpace(r.FormValue("path"))
-		content := r.FormValue("content")
-		if path != "" {
-			if !strings.HasPrefix(path, "/") {
-				path = "/" + path
-			}
-			if err := upsertScript(a.db, path, content); err != nil {
-				log.Printf("upsertScript error: %v", err)
-			}
-		}
-
-	case "new_script":
-		path := strings.TrimSpace(r.FormValue("path"))
-		content := r.FormValue("content")
-		if path != "" {
-			if !strings.HasPrefix(path, "/") {
-				path = "/" + path
-			}
-			if err := upsertScript(a.db, path, content); err != nil {
-				log.Printf("upsertScript error: %v", err)
-			}
-		}
-
-	case "delete_script":
-		id, _ := strconv.ParseInt(r.FormValue("id"), 10, 64)
-		if id > 0 {
-			if err := deleteScript(a.db, id); err != nil {
-				log.Printf("deleteScript error: %v", err)
-			}
+			break
 		}
 	}
 

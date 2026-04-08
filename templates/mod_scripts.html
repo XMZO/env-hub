@@ -1,0 +1,39 @@
+<h2>{{t .T "scripts"}}</h2>
+
+{{$scripts := .Data}}
+{{if $scripts}}
+{{range $scripts}}
+<div class="script-card">
+    <form method="POST" action="/admin">
+        <input type="hidden" name="module" value="scripts">
+        <input type="hidden" name="action" value="save">
+        <input type="hidden" name="path" value="{{.Path}}">
+        <p>
+            <span class="script-path">{{.Path}}</span>
+            <small>({{t $.T "updated_at"}} {{.UpdatedAt.Format "2006-01-02 15:04"}})</small>
+        </p>
+        <textarea name="content" rows="12">{{.Content}}</textarea>
+        <button type="submit">{{t $.T "save"}}</button>
+    </form>
+    <form method="POST" action="/admin" class="inline" onsubmit="return confirm('{{t $.T "delete_script_confirm"}}')">
+        <input type="hidden" name="module" value="scripts">
+        <input type="hidden" name="action" value="delete">
+        <input type="hidden" name="id" value="{{.ID}}">
+        <button type="submit" class="delete-btn">{{t $.T "delete"}}</button>
+    </form>
+</div>
+{{end}}
+{{else}}
+<p>{{t .T "no_scripts"}}</p>
+{{end}}
+
+<h3>{{t .T "new_script"}}</h3>
+<form method="POST" action="/admin">
+    <input type="hidden" name="module" value="scripts">
+    <input type="hidden" name="action" value="new">
+    <label for="new_path">{{t .T "path"}}</label>
+    <input type="text" id="new_path" name="path" placeholder="{{t .T "path_placeholder"}}" required>
+    <label for="new_content">{{t .T "description"}}</label>
+    <textarea id="new_content" name="content" rows="8" placeholder="#!/bin/sh&#10;set -eu&#10;..."></textarea>
+    <button type="submit">{{t .T "create"}}</button>
+</form>

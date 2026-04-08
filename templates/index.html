@@ -1,45 +1,54 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="{{index .T "lang_code"}}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>env.moe</title>
-    <link rel="stylesheet" href="https://unpkg.com/sakura.css/css/sakura-dark.css">
+    <title>{{t .T "site_title"}}</title>
     <style>
-        pre { padding: 1em; border-radius: 6px; }
-        code { font-size: 0.9em; }
-        .hero { text-align: center; margin: 3em 0 2em; }
-        .hero h1 { font-size: 2.5em; margin-bottom: 0.2em; }
-        .hero p { opacity: 0.7; font-size: 1.1em; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:system-ui,sans-serif;background:#1a1a2e;color:#e0e0e0;max-width:700px;margin:0 auto;padding:2em 1em;line-height:1.6}
+        h1,h2{color:#f0f0f0}h2{margin:1.5em 0 .5em;font-size:1.2em}
+        pre{background:#16213e;padding:1em;border-radius:6px;overflow-x:auto}
+        code{font-family:monospace;font-size:.9em;color:#7fdbca}
+        table{width:100%;border-collapse:collapse;margin:.5em 0}
+        th,td{text-align:left;padding:.4em .6em;border-bottom:1px solid #333}
+        th{color:#aaa;font-size:.85em}
+        a{color:#7fdbca}
+        .hero{text-align:center;margin:2em 0}
+        .hero h1{font-size:2.5em;margin-bottom:.2em}
+        .hero p{opacity:.6;font-size:1.1em}
+        .lang{position:absolute;top:1em;right:1em;font-size:.85em}
     </style>
 </head>
 <body>
+    <a class="lang" href="/lang?to={{index .T "lang_code"}}">{{t .T "lang_switch"}}</a>
+
     <div class="hero">
-        <h1>env.moe</h1>
-        <p>轻量级环境配置工具 — curl 一行搞定</p>
+        <h1>{{t .T "site_title"}}</h1>
+        <p>{{t .T "site_desc"}}</p>
     </div>
 
-    <h2>快速开始</h2>
+    <h2>{{t .T "quick_start"}}</h2>
     <pre><code>curl -fsSL https://env.moe/ssh | sh</code></pre>
 
-    <h2>可用路由</h2>
+    <h2>{{t .T "available_routes"}}</h2>
     <table>
         <thead>
-            <tr><th>路径</th><th>说明</th></tr>
+            <tr><th>{{t .T "path"}}</th><th>{{t .T "description"}}</th></tr>
         </thead>
         <tbody>
-            <tr><td><code>/ssh</code></td><td>安装 SSH 公钥到当前用户</td></tr>
-            <tr><td><code>/keys/main.pub</code></td><td>获取 SSH 公钥</td></tr>
-            <tr><td><code>/healthz</code></td><td>健康检查</td></tr>
+            <tr><td><code>/ssh</code></td><td>{{t .T "ssh_desc"}}</td></tr>
+            <tr><td><code>/keys/main.pub</code></td><td>{{t .T "keys_desc"}}</td></tr>
+            <tr><td><code>/healthz</code></td><td>{{t .T "healthz_desc"}}</td></tr>
         </tbody>
     </table>
 
-    <h2>用法</h2>
-    <p>所有脚本路由返回纯文本，可直接通过 <code>curl | sh</code> 执行：</p>
-    <pre><code># 安装 SSH 公钥
+    <h2>{{t .T "usage"}}</h2>
+    <p>{{t .T "usage_desc"}}</p>
+    <pre><code># {{t .T "install_ssh_key"}}
 curl -fsSL https://env.moe/ssh | sh
 
-# 查看公钥
+# {{t .T "view_key"}}
 curl -fsSL https://env.moe/keys/main.pub</code></pre>
 </body>
 </html>

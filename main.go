@@ -1,10 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
-	"database/sql"
 	"embed"
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -19,7 +18,9 @@ import (
 var templateFS embed.FS
 
 type app struct {
-	db         *sql.DB
+	modules    []Module
+	scripts    *ScriptsModule
+	i18n       *I18n
 	adminToken string
 	tmpl       *template.Template
 }
@@ -50,32 +51,66 @@ func main() {
 	}
 	defer db.Close()
 
-	tmpl, err := template.New("").Funcs(template.FuncMap{
-		"truncate": func(s string, n int) string {
-			if len(s) <= n {
-				return s
-			}
-			return s[:n] + "..."
-		},
-	}).ParseFS(templateFS, "templates/*.html")
+	i18n, err := newI18n("en")
 	if err != nil {
-		log.Fatalf("Failed to parse templates: %v", err)
+		log.Fatalf("Failed to load i18n: %v", err)
 	}
 
+	// --- Modules: add or remove here ---
+	scriptsModule := NewScriptsModule()
+	modules := []Module{
+		NewKeysModule(),
+		scriptsModule,
+	}
+
+	for _, m := range modules {
+		if err := m.Init(db); err != nil {
+			log.Fatalf("Failed to init module %s: %v", m.Name(), err)
+		}
+	}
+
+	var tmpl *template.Template
+	tmpl = template.Must(
+		template.New("").Funcs(template.FuncMap{
+			"t": func(translations map[string]string, key string) string {
+				if v, ok := translations[key]; ok {
+					return v
+				}
+				return key
+			},
+			"truncate": func(s string, n int) string {
+				if len(s) <= n {
+					return s
+				}
+				return s[:n] + "..."
+			},
+			"renderModule": func(mv ModuleView) template.HTML {
+				var buf bytes.Buffer
+				if err := tmpl.ExecuteTemplate(&buf, mv.Template, mv); err != nil {
+					log.Printf("renderModule %s error: %v", mv.Template, err)
+					return ""
+				}
+				return template.HTML(buf.String())
+			},
+		}).ParseFS(templateFS, "templates/*.html"),
+	)
+
 	a := &app{
-		db:         db,
+		modules:    modules,
+		scripts:    scriptsModule,
+		i18n:       i18n,
 		adminToken: adminToken,
 		tmpl:       tmpl,
 	}
 
-	seedDefaultScript(db)
-
 	mux := http.NewServeMux()
 
-	// Public routes
+	// Core routes
 	mux.HandleFunc("GET /", a.handleIndex)
 	mux.HandleFunc("GET /healthz", a.handleHealthz)
-	mux.HandleFunc("GET /keys/main.pub", a.handleKeys)
+
+	// Lang switch
+	mux.HandleFunc("GET /lang", a.handleLangSwitch)
 
 	// Admin routes
 	mux.HandleFunc("GET /admin/login", a.handleLoginPage)
@@ -83,12 +118,22 @@ func main() {
 	mux.HandleFunc("GET /admin", a.requireAuth(a.handleAdmin))
 	mux.HandleFunc("POST /admin", a.requireAuth(a.handleAdminPost))
 
-	// Dynamic script routes — wrap the mux to catch unmatched paths
-	handler := a.scriptFallback(mux)
+	// Module routes
+	for _, m := range modules {
+		m.RegisterRoutes(mux)
+	}
+
+	// Middleware chain (outer → inner): security → gzip → script fallback → mux
+	// ETag removed: conflicts with gzip (hash mismatch), and for this app
+	// gzip alone is sufficient — responses are small and mostly dynamic.
+	handler := securityHeaders(gzipMiddleware(a.scriptFallback(mux)))
 
 	srv := &http.Server{
-		Addr:    listenAddr,
-		Handler: handler,
+		Addr:         listenAddr,
+		Handler:      handler,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	go func() {
@@ -110,47 +155,12 @@ func main() {
 
 func (a *app) scriptFallback(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Let the mux try first by checking if it has an exact match
-		// For paths like /ssh, /init, /dev — check scripts table
 		path := strings.TrimPrefix(r.URL.Path, "/")
 		if r.Method == http.MethodGet && path != "" && !strings.Contains(path, "/") {
-			s, err := getScript(a.db, "/"+path)
-			if err == nil {
-				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-				fmt.Fprint(w, s.Content)
+			if a.scripts.ServeScript(w, "/"+path) {
 				return
 			}
 		}
 		next.ServeHTTP(w, r)
 	})
-}
-
-func seedDefaultScript(db *sql.DB) {
-	_, err := getScript(db, "/ssh")
-	if err != nil {
-		defaultSSH := `#!/bin/sh
-set -eu
-
-KEY_URL="${ENV_HUB_URL:-https://env.moe}/keys/main.pub"
-KEY=$(curl -fsSL "$KEY_URL")
-
-if [ -z "$KEY" ]; then
-  echo "[env.moe] No key found."
-  exit 1
-fi
-
-mkdir -p ~/.ssh
-chmod 700 ~/.ssh
-touch ~/.ssh/authorized_keys
-chmod 600 ~/.ssh/authorized_keys
-
-if grep -qF "$KEY" ~/.ssh/authorized_keys 2>/dev/null; then
-  echo "[env.moe] SSH key already present."
-else
-  echo "$KEY" >> ~/.ssh/authorized_keys
-  echo "[env.moe] SSH key added."
-fi
-`
-		upsertScript(db, "/ssh", defaultSSH)
-	}
 }
