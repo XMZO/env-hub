@@ -44,13 +44,11 @@ func (m *ScriptsModule) Init(db *sql.DB) error {
 		)
 	`)
 	if err != nil {
-		// Migration: add description column to existing table
-		db.Exec("ALTER TABLE scripts ADD COLUMN description TEXT NOT NULL DEFAULT ''")
-		err = nil
-	}
-	if err != nil {
 		return err
 	}
+
+	// Migration: add description column if missing (ignore "duplicate column" error)
+	db.Exec("ALTER TABLE scripts ADD COLUMN description TEXT NOT NULL DEFAULT ''")
 
 	var prepErr error
 	prep := func(q string) *sql.Stmt {
