@@ -1,44 +1,50 @@
-<h2>{{t .T "scripts"}}</h2>
-
 {{$scripts := .Data}}
 {{if $scripts}}
 {{range $scripts}}
-<div class="script-card">
-    <form method="POST" action="/admin">
-        <input type="hidden" name="module" value="scripts">
-        <input type="hidden" name="action" value="save">
-        <input type="hidden" name="path" value="{{.Path}}">
-        <p>
-            <span class="script-path">{{.Path}}</span>
-            <small>({{t $.T "updated_at"}} {{.UpdatedAt.Format "2006-01-02 15:04"}})</small>
-        </p>
-        <label>{{t $.T "script_desc"}}</label>
-        <input type="text" name="description" value="{{.Description}}" placeholder="{{t $.T "script_desc_placeholder"}}">
-        <label>{{t $.T "script_content"}}</label>
-        <textarea name="content" rows="12">{{.Content}}</textarea>
-        <button type="submit">{{t $.T "save"}}</button>
-    </form>
-    <form method="POST" action="/admin" class="inline" onsubmit="return confirm('{{t $.T "delete_script_confirm"}}')">
-        <input type="hidden" name="module" value="scripts">
-        <input type="hidden" name="action" value="delete">
-        <input type="hidden" name="id" value="{{.ID}}">
-        <button type="submit" class="delete-btn">{{t $.T "delete"}}</button>
-    </form>
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">{{.Path}}</span>
+        <span class="card-desc">{{.Description}}</span>
+        <span class="card-meta">{{.UpdatedAt.Format "01-02 15:04"}}</span>
+        <span class="card-chevron">&#9654;</span>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="/admin">
+            <input type="hidden" name="module" value="scripts">
+            <input type="hidden" name="action" value="save">
+            <input type="hidden" name="path" value="{{.Path}}">
+            <label>{{t $.T "script_desc"}}</label>
+            <input type="text" name="description" value="{{.Description}}" placeholder="{{t $.T "script_desc_placeholder"}}">
+            <label>{{t $.T "script_content"}}</label>
+            <textarea name="content" rows="14">{{.Content}}</textarea>
+            <div class="flex-end">
+                <button type="submit" class="btn btn-primary">{{t $.T "save"}}</button>
+            </div>
+        </form>
+        <form method="POST" action="/admin" class="inline" onsubmit="return confirm('{{t $.T "delete_script_confirm"}}')">
+            <input type="hidden" name="module" value="scripts">
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="id" value="{{.ID}}">
+            <button type="submit" class="btn btn-danger btn-sm">{{t $.T "delete"}}</button>
+        </form>
+    </div>
 </div>
 {{end}}
 {{else}}
-<p>{{t .T "no_scripts"}}</p>
+<div class="empty">{{t .T "no_scripts"}}</div>
 {{end}}
 
-<h3>{{t .T "new_script"}}</h3>
-<form method="POST" action="/admin">
-    <input type="hidden" name="module" value="scripts">
-    <input type="hidden" name="action" value="new">
-    <label for="new_path">{{t .T "path"}}</label>
-    <input type="text" id="new_path" name="path" placeholder="{{t .T "path_placeholder"}}" required>
-    <label for="new_desc">{{t .T "script_desc"}}</label>
-    <input type="text" id="new_desc" name="description" placeholder="{{t .T "script_desc_placeholder"}}">
-    <label for="new_content">{{t .T "script_content"}}</label>
-    <textarea id="new_content" name="content" rows="8" placeholder="#!/bin/sh&#10;set -eu&#10;..."></textarea>
-    <button type="submit">{{t .T "create"}}</button>
-</form>
+<div class="add-form">
+    <h3>{{t .T "new_script"}}</h3>
+    <form method="POST" action="/admin">
+        <input type="hidden" name="module" value="scripts">
+        <input type="hidden" name="action" value="new">
+        <label>{{t .T "path"}}</label>
+        <input type="text" name="path" placeholder="{{t .T "path_placeholder"}}" required>
+        <label>{{t .T "script_desc"}}</label>
+        <input type="text" name="description" placeholder="{{t .T "script_desc_placeholder"}}">
+        <label>{{t .T "script_content"}}</label>
+        <textarea name="content" rows="8" placeholder="#!/bin/sh&#10;set -eu&#10;..."></textarea>
+        <div class="mt"><button type="submit" class="btn btn-primary">{{t .T "create"}}</button></div>
+    </form>
+</div>

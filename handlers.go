@@ -63,6 +63,17 @@ func (a *app) handleLoginPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (a *app) handleLogout(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "admin_token",
+		Value:    "",
+		Path:     "/admin",
+		MaxAge:   -1,
+		HttpOnly: true,
+	})
+	http.Redirect(w, r, "/admin/login", http.StatusFound)
+}
+
 func (a *app) handleLogin(w http.ResponseWriter, r *http.Request) {
 	lang := detectLang(r, a.i18n.fallback)
 

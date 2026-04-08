@@ -5,42 +5,122 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{.Host}} — {{t .T "admin_panel"}}</title>
     <style>
+        :root{--bg:#1a1a2e;--surface:#16213e;--border:#2a2a4a;--text:#e0e0e0;--muted:#888;--accent:#7fdbca;--danger:#e74c3c;--radius:8px;--transition:all .25s cubic-bezier(.4,0,.2,1)}
         *{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:system-ui,sans-serif;background:#1a1a2e;color:#e0e0e0;max-width:800px;margin:0 auto;padding:2em 1em;line-height:1.6}
-        h1,h2,h3{color:#f0f0f0}h1{margin-bottom:.3em}h2{margin:1.5em 0 .5em}h3{margin:1em 0 .5em;font-size:1em}
-        a{color:#7fdbca}
-        table{width:100%;border-collapse:collapse;margin:.5em 0}
-        th,td{text-align:left;padding:.4em .6em;border-bottom:1px solid #333}
-        th{color:#aaa;font-size:.85em}
-        label{display:block;margin:.5em 0 .2em;font-size:.9em;color:#aaa}
-        input[type=text],input[type=password]{width:100%;padding:.5em;background:#16213e;border:1px solid #333;border-radius:4px;color:#e0e0e0;font-size:.95em}
-        input:focus,textarea:focus{outline:none;border-color:#7fdbca}
-        textarea{width:100%;padding:.5em;background:#16213e;border:1px solid #333;border-radius:4px;color:#e0e0e0;font-family:monospace;font-size:.9em}
-        button{padding:.4em 1em;background:#7fdbca;color:#1a1a2e;border:none;border-radius:4px;cursor:pointer;font-weight:bold;font-size:.9em;margin:.5em .3em .5em 0}
-        button:hover{opacity:.9}
-        .delete-btn{background:#e74c3c;color:#fff}
-        .delete-btn:hover{background:#c0392b}
-        .script-card{border:1px solid #333;border-radius:6px;padding:1em;margin-bottom:1em}
-        .script-path{font-family:monospace;font-weight:bold;color:#7fdbca}
-        .key-text{font-family:monospace;font-size:.8em;word-break:break-all;color:#aaa}
-        small{color:#666}
-        hr{border:none;border-top:1px solid #333;margin:2em 0}
+        body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh}
+
+        /* Header */
+        .header{background:var(--surface);border-bottom:1px solid var(--border);padding:1em 1.5em;position:sticky;top:0;z-index:10;backdrop-filter:blur(10px)}
+        .header-inner{max-width:900px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5em}
+        .header h1{font-size:1.3em;font-weight:600}
+        .header-actions{display:flex;gap:1em;font-size:.85em}
+        .header-actions a{color:var(--accent);text-decoration:none;opacity:.8;transition:var(--transition)}
+        .header-actions a:hover{opacity:1}
+
+        /* Main */
+        .main{max-width:900px;margin:0 auto;padding:1.5em 1em}
+
+        /* Tabs */
+        .tabs{display:flex;gap:2px;margin-bottom:1.5em;border-bottom:2px solid var(--border);overflow-x:auto}
+        .tab{padding:.6em 1.2em;cursor:pointer;color:var(--muted);font-size:.95em;font-weight:500;border-bottom:2px solid transparent;margin-bottom:-2px;transition:var(--transition);white-space:nowrap;user-select:none}
+        .tab:hover{color:var(--text)}
+        .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+        .tab-content{display:none;animation:fadeIn .3s ease}
+        .tab-content.active{display:block}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+        /* Cards */
+        .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:.75em;overflow:hidden;transition:var(--transition)}
+        .card:hover{border-color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+        .card-header{padding:.8em 1em;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:1em}
+        .card-header:hover{background:rgba(127,219,202,.05)}
+        .card-title{font-family:monospace;font-weight:600;color:var(--accent);font-size:.95em}
+        .card-meta{font-size:.75em;color:var(--muted)}
+        .card-desc{font-size:.8em;color:var(--muted);margin-left:1em;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .card-chevron{color:var(--muted);transition:transform .25s ease;font-size:.8em}
+        .card.open .card-chevron{transform:rotate(90deg)}
+        .card-body{max-height:0;overflow:hidden;transition:max-height .35s cubic-bezier(.4,0,.2,1),padding .35s ease}
+        .card.open .card-body{max-height:2000px;padding:.8em 1em 1em}
+
+        /* Table */
+        table{width:100%;border-collapse:collapse}
+        th,td{text-align:left;padding:.5em .7em;border-bottom:1px solid var(--border);font-size:.9em}
+        th{color:var(--muted);font-size:.8em;font-weight:500;text-transform:uppercase;letter-spacing:.05em}
+        .key-text{font-family:monospace;font-size:.75em;color:var(--muted);word-break:break-all;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+        /* Forms */
+        label{display:block;margin:.6em 0 .2em;font-size:.85em;color:var(--muted)}
+        input[type=text],input[type=password]{width:100%;padding:.5em .7em;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:.9em;transition:var(--transition)}
+        input:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(127,219,202,.15)}
+        textarea{width:100%;padding:.5em .7em;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:monospace;font-size:.85em;resize:vertical;transition:var(--transition)}
+
+        /* Buttons */
+        .btn{display:inline-flex;align-items:center;gap:.3em;padding:.45em 1em;border:none;border-radius:var(--radius);font-size:.85em;font-weight:600;cursor:pointer;transition:var(--transition)}
+        .btn:hover{transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.3)}
+        .btn:active{transform:translateY(0)}
+        .btn-primary{background:var(--accent);color:var(--bg)}
+        .btn-danger{background:var(--danger);color:#fff}
+        .btn-danger:hover{background:#c0392b}
+        .btn-sm{padding:.3em .7em;font-size:.8em}
+
+        /* Utility */
         .inline{display:inline}
-        .top-bar{display:flex;justify-content:space-between;align-items:center}
-        .lang{font-size:.85em}
+        .mt{margin-top:.5em}
+        .flex-end{display:flex;gap:.5em;align-items:center;margin-top:.5em}
+        .add-form{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1em;margin-top:1em}
+        .add-form h3{font-size:.95em;margin-bottom:.5em;color:var(--text)}
+        .empty{text-align:center;padding:2em;color:var(--muted);font-size:.9em}
+        .badge{display:inline-block;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:.1em .5em;font-size:.7em;color:var(--muted);font-family:monospace}
+
+        /* Responsive */
+        @media(max-width:600px){
+            .header{padding:.8em 1em}
+            .header h1{font-size:1.1em}
+            .main{padding:1em .8em}
+            .card-header{flex-wrap:wrap}
+            .card-desc{order:3;width:100%;margin-left:0;margin-top:.3em}
+            .key-text{max-width:150px}
+            th:nth-child(2),td:nth-child(2){display:none}
+        }
     </style>
 </head>
 <body>
-    <div class="top-bar">
-        <div>
+    <div class="header">
+        <div class="header-inner">
             <h1>{{.Host}} {{t .T "admin_panel"}}</h1>
+            <div class="header-actions">
+                <a href="/lang?to={{index .T "lang_code"}}">{{t .T "lang_switch"}}</a>
+                <a href="/admin/logout">{{t .T "logout"}}</a>
+            </div>
         </div>
-        <a class="lang" href="/lang?to={{index .T "lang_code"}}">{{t .T "lang_switch"}}</a>
     </div>
 
-    {{range .Modules}}
-    <hr>
-    {{renderModule .}}
-    {{end}}
+    <div class="main">
+        <div class="tabs">
+            {{range $i, $m := .Modules}}
+            <div class="tab{{if eq $i 0}} active{{end}}" data-tab="tab-{{$m.Name}}">{{t $m.T $m.Name}}</div>
+            {{end}}
+        </div>
+
+        {{range $i, $m := .Modules}}
+        <div class="tab-content{{if eq $i 0}} active{{end}}" id="tab-{{$m.Name}}">
+            {{renderModule $m}}
+        </div>
+        {{end}}
+    </div>
+
+    <script>
+    document.querySelectorAll('.tab').forEach(tab=>{
+        tab.addEventListener('click',()=>{
+            document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById(tab.dataset.tab).classList.add('active');
+        });
+    });
+    document.querySelectorAll('.card-header').forEach(h=>{
+        h.addEventListener('click',()=>h.parentElement.classList.toggle('open'));
+    });
+    </script>
 </body>
 </html>
