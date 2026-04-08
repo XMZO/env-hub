@@ -63,11 +63,41 @@ go run .
 
 ## 部署建议
 
-生产环境建议在前面挂一个反向代理（Caddy / Nginx）处理 HTTPS：
+生产环境建议在前面挂一个反向代理（Caddy / Nginx）处理 HTTPS。
+
+### Caddy
+
+> **Important / 重要提示**
+>
+> Caddy automatically redirects HTTP to HTTPS (308). If you want `curl your.domain` to work without `-L`, you must add a separate `http://` block to handle HTTP directly.
+>
+> Caddy 默认会将 HTTP 请求 308 重定向到 HTTPS。如果你希望 `curl your.domain` 无需 `-L` 即可使用，必须额外添加 `http://` block 直接代理 HTTP 请求。
 
 ```
-# Caddyfile 示例
-env.moe {
+# Caddyfile
+your.domain {
+    encode gzip zstd
     reverse_proxy localhost:9800
+}
+
+# Allow curl over HTTP without redirect
+# 允许 curl 通过 HTTP 直接访问，不跳转
+http://your.domain {
+    reverse_proxy localhost:9800
+}
+```
+
+### Nginx
+
+```nginx
+server {
+    listen 80;
+    server_name your.domain;
+    location / {
+        proxy_pass http://127.0.0.1:9800;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 }
 ```
