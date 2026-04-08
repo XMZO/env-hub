@@ -84,6 +84,7 @@ func (m *ScriptsModule) ServeScript(w http.ResponseWriter, path string) bool {
 		return false
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Cache-Control", "public, max-age=60")
 	fmt.Fprint(w, s.Content)
 	return true
 }

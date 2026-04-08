@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{t .T "site_title"}} — {{t .T "admin_panel"}}</title>
+    <title>{{.Host}} — {{t .T "admin_panel"}}</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         body{font-family:system-ui,sans-serif;background:#1a1a2e;color:#e0e0e0;max-width:800px;margin:0 auto;padding:2em 1em;line-height:1.6}
@@ -33,7 +33,7 @@
 <body>
     <div class="top-bar">
         <div>
-            <h1>{{t .T "site_title"}} {{t .T "admin_panel"}}</h1>
+            <h1>{{.Host}} {{t .T "admin_panel"}}</h1>
             <p><a href="/">{{t .T "back_home"}}</a></p>
         </div>
         <a class="lang" href="/lang?to={{index .T "lang_code"}}">{{t .T "lang_switch"}}</a>

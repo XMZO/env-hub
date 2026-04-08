@@ -106,7 +106,6 @@ func main() {
 	mux := http.NewServeMux()
 
 	// Core routes
-	mux.HandleFunc("GET /", a.handleIndex)
 	mux.HandleFunc("GET /healthz", a.handleHealthz)
 
 	// Lang switch
@@ -155,9 +154,9 @@ func main() {
 
 func (a *app) scriptFallback(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		path := strings.TrimPrefix(r.URL.Path, "/")
-		if r.Method == http.MethodGet && path != "" && !strings.Contains(path, "/") {
-			if a.scripts.ServeScript(w, "/"+path) {
+		if r.Method == http.MethodGet && !strings.Contains(r.URL.Path[1:], "/") {
+			// Try serving as a script route (including "/" itself)
+			if a.scripts.ServeScript(w, r.URL.Path) {
 				return
 			}
 		}

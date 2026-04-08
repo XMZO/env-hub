@@ -8,22 +8,9 @@ import (
 
 // --- Public handlers ---
 
-func (a *app) handleIndex(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-		return
-	}
-	lang := detectLang(r, a.i18n.fallback)
-	data := map[string]any{
-		"T": a.i18n.GetLang(lang),
-	}
-	if err := a.tmpl.ExecuteTemplate(w, "index.html", data); err != nil {
-		log.Printf("template index error: %v", err)
-	}
-}
-
 func (a *app) handleHealthz(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
 	w.Write([]byte("ok"))
 }
 
@@ -65,6 +52,7 @@ func (a *app) handleLoginPage(w http.ResponseWriter, r *http.Request) {
 	lang := detectLang(r, a.i18n.fallback)
 	data := map[string]any{
 		"T":     a.i18n.GetLang(lang),
+		"Host":  r.Host,
 		"Error": "",
 	}
 	if err := a.tmpl.ExecuteTemplate(w, "login.html", data); err != nil {
@@ -78,6 +66,7 @@ func (a *app) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if token != a.adminToken {
 		data := map[string]any{
 			"T":     a.i18n.GetLang(lang),
+			"Host":  r.Host,
 			"Error": a.i18n.T(lang, "token_error"),
 		}
 		if err := a.tmpl.ExecuteTemplate(w, "login.html", data); err != nil {
@@ -114,6 +103,7 @@ func (a *app) handleAdmin(w http.ResponseWriter, r *http.Request) {
 
 	pageData := map[string]any{
 		"T":       t,
+		"Host":    r.Host,
 		"Modules": moduleViews,
 	}
 	if err := a.tmpl.ExecuteTemplate(w, "admin.html", pageData); err != nil {
