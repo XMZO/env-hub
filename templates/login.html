@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>env.moe — 登录</title>
+    <link rel="stylesheet" href="https://unpkg.com/sakura.css/css/sakura-dark.css">
+    <style>
+        .login-box { max-width: 400px; margin: 4em auto; }
+        .error { color: #e74c3c; margin-bottom: 1em; }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <h1>env.moe</h1>
+        <h2>管理后台</h2>
+        {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+        <form method="POST" action="/admin/login">
+            <label for="token">Token</label>
+            <input type="password" id="token" name="token" placeholder="输入管理 Token" required autofocus>
+            <button type="submit">登录</button>
+        </form>
+    </div>
+</body>
+</html>

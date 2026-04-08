@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>env.moe</title>
+    <link rel="stylesheet" href="https://unpkg.com/sakura.css/css/sakura-dark.css">
+    <style>
+        pre { padding: 1em; border-radius: 6px; }
+        code { font-size: 0.9em; }
+        .hero { text-align: center; margin: 3em 0 2em; }
+        .hero h1 { font-size: 2.5em; margin-bottom: 0.2em; }
+        .hero p { opacity: 0.7; font-size: 1.1em; }
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <h1>env.moe</h1>
+        <p>轻量级环境配置工具 — curl 一行搞定</p>
+    </div>
+
+    <h2>快速开始</h2>
+    <pre><code>curl -fsSL https://env.moe/ssh | sh</code></pre>
+
+    <h2>可用路由</h2>
+    <table>
+        <thead>
+            <tr><th>路径</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>/ssh</code></td><td>安装 SSH 公钥到当前用户</td></tr>
+            <tr><td><code>/keys/main.pub</code></td><td>获取 SSH 公钥</td></tr>
+            <tr><td><code>/healthz</code></td><td>健康检查</td></tr>
+        </tbody>
+    </table>
+
+    <h2>用法</h2>
+    <p>所有脚本路由返回纯文本，可直接通过 <code>curl | sh</code> 执行：</p>
+    <pre><code># 安装 SSH 公钥
+curl -fsSL https://env.moe/ssh | sh
+
+# 查看公钥
+curl -fsSL https://env.moe/keys/main.pub</code></pre>
+</body>
+</html>

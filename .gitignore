@@ -1,0 +1,6 @@
+PLAN.md
+data/
+*.db
+env-hub
+env-hub.exe
+.env

@@ -1,0 +1,11 @@
+services:
+  env-hub:
+    image: ghcr.io/xmzo/env-hub:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - ADMIN_TOKEN=${ADMIN_TOKEN}
+      - LISTEN_ADDR=:8080
+    volumes:
+      - ./data:/data
