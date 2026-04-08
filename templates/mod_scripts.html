@@ -12,6 +12,9 @@
             <span class="script-path">{{.Path}}</span>
             <small>({{t $.T "updated_at"}} {{.UpdatedAt.Format "2006-01-02 15:04"}})</small>
         </p>
+        <label>{{t $.T "script_desc"}}</label>
+        <input type="text" name="description" value="{{.Description}}" placeholder="{{t $.T "script_desc_placeholder"}}">
+        <label>{{t $.T "script_content"}}</label>
         <textarea name="content" rows="12">{{.Content}}</textarea>
         <button type="submit">{{t $.T "save"}}</button>
     </form>
@@ -33,7 +36,9 @@
     <input type="hidden" name="action" value="new">
     <label for="new_path">{{t .T "path"}}</label>
     <input type="text" id="new_path" name="path" placeholder="{{t .T "path_placeholder"}}" required>
-    <label for="new_content">{{t .T "description"}}</label>
+    <label for="new_desc">{{t .T "script_desc"}}</label>
+    <input type="text" id="new_desc" name="description" placeholder="{{t .T "script_desc_placeholder"}}">
+    <label for="new_content">{{t .T "script_content"}}</label>
     <textarea id="new_content" name="content" rows="8" placeholder="#!/bin/sh&#10;set -eu&#10;..."></textarea>
     <button type="submit">{{t .T "create"}}</button>
 </form>

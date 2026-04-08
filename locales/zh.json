@@ -18,7 +18,7 @@
   "token_placeholder": "输入管理 Token",
   "login_btn": "登录",
   "token_error": "Token 不正确",
-  "back_home": "← 返回首页",
+  "captcha_error": "验证失败，请重试",
   "ssh_keys": "SSH 公钥",
   "no_keys": "暂无公钥，请添加。",
   "key_name": "备注名",
@@ -37,6 +37,9 @@
   "new_script": "新建脚本",
   "path_placeholder": "/init",
   "create": "创建",
+  "script_desc": "描述",
+  "script_desc_placeholder": "例如：安装 SSH 公钥",
+  "script_content": "脚本内容",
   "updated_at": "更新于",
   "lang_switch": "English",
   "lang_code": "en"

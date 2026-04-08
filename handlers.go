@@ -1,9 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
+	"time"
 )
 
 // --- Public handlers ---
@@ -16,7 +19,6 @@ func (a *app) handleHealthz(w http.ResponseWriter, r *http.Request) {
 
 func (a *app) handleLangSwitch(w http.ResponseWriter, r *http.Request) {
 	lang := r.URL.Query().Get("to")
-	// Validate against available languages
 	valid := false
 	for _, l := range a.i18n.Langs() {
 		if l == lang {
@@ -29,13 +31,10 @@ func (a *app) handleLangSwitch(w http.ResponseWriter, r *http.Request) {
 	}
 	setLangCookie(w, lang)
 
-	// Only redirect to same-origin paths, prevent open redirect
 	ref := r.Header.Get("Referer")
 	if ref == "" || !strings.HasPrefix(ref, "/") {
-		// Parse referer to extract path only
 		ref = "/"
 		if raw := r.Header.Get("Referer"); raw != "" {
-			// Extract path portion only for safety
 			if idx := strings.Index(raw, "://"); idx != -1 {
 				if pathIdx := strings.Index(raw[idx+3:], "/"); pathIdx != -1 {
 					ref = raw[idx+3+pathIdx:]
@@ -48,27 +47,40 @@ func (a *app) handleLangSwitch(w http.ResponseWriter, r *http.Request) {
 
 // --- Admin handlers ---
 
-func (a *app) handleLoginPage(w http.ResponseWriter, r *http.Request) {
+func (a *app) loginData(r *http.Request, errMsg string) map[string]any {
 	lang := detectLang(r, a.i18n.fallback)
-	data := map[string]any{
-		"T":     a.i18n.GetLang(lang),
-		"Host":  r.Host,
-		"Error": "",
+	return map[string]any{
+		"T":             a.i18n.GetLang(lang),
+		"Host":          r.Host,
+		"Error":         errMsg,
+		"TurnstileSite": a.turnstileSite,
 	}
-	if err := a.tmpl.ExecuteTemplate(w, "login.html", data); err != nil {
+}
+
+func (a *app) handleLoginPage(w http.ResponseWriter, r *http.Request) {
+	if err := a.tmpl.ExecuteTemplate(w, "login.html", a.loginData(r, "")); err != nil {
 		log.Printf("template login error: %v", err)
 	}
 }
 
 func (a *app) handleLogin(w http.ResponseWriter, r *http.Request) {
 	lang := detectLang(r, a.i18n.fallback)
+
+	// Verify Turnstile if enabled
+	if a.turnstileSite != "" {
+		cfToken := r.FormValue("cf-turnstile-response")
+		if !verifyTurnstile(a.turnstileKey, cfToken, clientIP(r)) {
+			data := a.loginData(r, a.i18n.T(lang, "captcha_error"))
+			if err := a.tmpl.ExecuteTemplate(w, "login.html", data); err != nil {
+				log.Printf("template login error: %v", err)
+			}
+			return
+		}
+	}
+
 	token := strings.TrimSpace(r.FormValue("token"))
 	if token != a.adminToken {
-		data := map[string]any{
-			"T":     a.i18n.GetLang(lang),
-			"Host":  r.Host,
-			"Error": a.i18n.T(lang, "token_error"),
-		}
+		data := a.loginData(r, a.i18n.T(lang, "token_error"))
 		if err := a.tmpl.ExecuteTemplate(w, "login.html", data); err != nil {
 			log.Printf("template login error: %v", err)
 		}
@@ -125,4 +137,41 @@ func (a *app) handleAdminPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/admin", http.StatusFound)
+}
+
+// --- Turnstile verification ---
+
+var turnstileClient = &http.Client{Timeout: 5 * time.Second}
+
+func verifyTurnstile(secret, token, remoteIP string) bool {
+	if token == "" {
+		return false
+	}
+	resp, err := turnstileClient.PostForm(
+		"https://challenges.cloudflare.com/turnstile/v0/siteverify",
+		url.Values{
+			"secret":   {secret},
+			"response": {token},
+			"remoteip": {remoteIP},
+		},
+	)
+	if err != nil {
+		log.Printf("turnstile verify error: %v", err)
+		return false
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Success bool `json:"success"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Printf("turnstile decode error: %v", err)
+		return false
+	}
+	return result.Success
+}
+
+// clientIP reuses realIP from ratelimit.go
+func clientIP(r *http.Request) string {
+	return realIP(r)
 }
