@@ -61,10 +61,18 @@ var gzPool = sync.Pool{
 
 type gzipResponseWriter struct {
 	http.ResponseWriter
-	gz *gzip.Writer
+	gz          *gzip.Writer
+	sniffDone   bool
 }
 
 func (w *gzipResponseWriter) Write(b []byte) (int, error) {
+	// Sniff Content-Type from uncompressed data before gzip writes
+	if !w.sniffDone {
+		if w.Header().Get("Content-Type") == "" {
+			w.Header().Set("Content-Type", http.DetectContentType(b))
+		}
+		w.sniffDone = true
+	}
 	return w.gz.Write(b)
 }
 
