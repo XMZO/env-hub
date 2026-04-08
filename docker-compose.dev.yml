@@ -7,5 +7,6 @@ services:
     environment:
       - ADMIN_TOKEN=${ADMIN_TOKEN}
       - LISTEN_ADDR=:9800
+      - TURNSTILE_KEYS=${TURNSTILE_KEYS}
     volumes:
       - ./data:/data
