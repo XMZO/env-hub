@@ -3,9 +3,9 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "9800:9800"
     environment:
       - ADMIN_TOKEN=${ADMIN_TOKEN}
-      - LISTEN_ADDR=:8080
+      - LISTEN_ADDR=:9800
     volumes:
       - ./data:/data

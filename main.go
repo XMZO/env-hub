@@ -33,7 +33,7 @@ func main() {
 
 	listenAddr := os.Getenv("LISTEN_ADDR")
 	if listenAddr == "" {
-		listenAddr = ":8080"
+		listenAddr = ":9800"
 	}
 
 	dataDir := os.Getenv("DATA_DIR")

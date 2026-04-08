@@ -10,6 +10,6 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags=
 FROM scratch
 COPY --from=build /env-hub /env-hub
 VOLUME /data
-EXPOSE 8080
+EXPOSE 9800
 ENV DATA_DIR=/data
 ENTRYPOINT ["/env-hub"]

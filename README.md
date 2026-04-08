@@ -23,7 +23,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-访问 `http://localhost:8080`，管理后台在 `http://localhost:8080/admin`。
+访问 `http://localhost:9800`，管理后台在 `http://localhost:9800/admin`。
 
 ### 使用预构建镜像
 
@@ -46,7 +46,7 @@ go run .
 | 变量 | 必填 | 默认值 | 说明 |
 |------|------|--------|------|
 | `ADMIN_TOKEN` | 是 | - | 管理后台访问 Token |
-| `LISTEN_ADDR` | 否 | `:8080` | 监听地址 |
+| `LISTEN_ADDR` | 否 | `:9800` | 监听地址 |
 | `DATA_DIR` | 否 | `./data` | SQLite 数据文件目录 |
 
 ## 路由
@@ -68,6 +68,6 @@ go run .
 ```
 # Caddyfile 示例
 env.moe {
-    reverse_proxy localhost:8080
+    reverse_proxy localhost:9800
 }
 ```
