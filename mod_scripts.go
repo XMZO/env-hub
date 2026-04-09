@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -15,6 +16,7 @@ type ScriptsModule struct {
 	getScript    *sql.Stmt
 	upsertScript *sql.Stmt
 	deleteScript *sql.Stmt
+	templates    []ScriptTemplate
 }
 
 type Script struct {
@@ -71,6 +73,10 @@ func (m *ScriptsModule) Init(db *sql.DB) error {
 		return prepErr
 	}
 
+	// Load script templates (embedded + optional external directory)
+	extraDir := os.Getenv("SCRIPT_TEMPLATES_DIR")
+	m.templates = loadScriptTemplates(extraDir)
+
 	// Seed default /ssh script if not exists
 	m.seedDefaults()
 	return nil
@@ -107,8 +113,18 @@ func (m *ScriptsModule) ServeScript(w http.ResponseWriter, r *http.Request, path
 
 func (m *ScriptsModule) AdminTemplateName() string { return "mod_scripts.html" }
 
+// ScriptsAdminData bundles script list and available templates for admin UI.
+type ScriptsAdminData struct {
+	Scripts   []Script
+	Templates []ScriptTemplate
+}
+
 func (m *ScriptsModule) AdminData() (any, error) {
-	return m.list()
+	scripts, err := m.list()
+	if err != nil {
+		return nil, err
+	}
+	return ScriptsAdminData{Scripts: scripts, Templates: m.templates}, nil
 }
 
 func (m *ScriptsModule) AdminAction(action string, r *http.Request) error {
@@ -186,78 +202,11 @@ func (m *ScriptsModule) seedDefaults() {
 		return
 	}
 
-	defaultSSH := `#!/bin/sh
-# env-hub: install SSH public keys
-set -eu
-
-# Colors (disabled if not a tty or NO_COLOR is set)
-if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
-  C_GREEN='\033[32m'; C_YELLOW='\033[33m'; C_RED='\033[31m'; C_DIM='\033[2m'; C_OFF='\033[0m'
-else
-  C_GREEN=''; C_YELLOW=''; C_RED=''; C_DIM=''; C_OFF=''
-fi
-
-log()  { printf '%b[env-hub]%b %s\n' "$C_DIM" "$C_OFF" "$1"; }
-ok()   { printf '%b[env-hub]%b %b%s%b\n' "$C_DIM" "$C_OFF" "$C_GREEN" "$1" "$C_OFF"; }
-warn() { printf '%b[env-hub]%b %b%s%b\n' "$C_DIM" "$C_OFF" "$C_YELLOW" "$1" "$C_OFF"; }
-err()  { printf '%b[env-hub]%b %b%s%b\n' "$C_DIM" "$C_OFF" "$C_RED" "$1" "$C_OFF" >&2; }
-
-# Check dependencies
-command -v curl >/dev/null 2>&1 || { err "curl is required but not installed."; exit 1; }
-
-# Determine target SSH directory (respect SUDO_USER)
-if [ -n "${SUDO_USER:-}" ] && [ "$(id -u)" = "0" ]; then
-  SSH_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
-  OWNER="$SUDO_USER"
-else
-  SSH_HOME="$HOME"
-  OWNER=""
-fi
-SSH_DIR="$SSH_HOME/.ssh"
-AUTH="$SSH_DIR/authorized_keys"
-
-# Fetch keys
-BASE_URL="${ENV_HUB_URL:-__BASE_URL__}"
-log "Fetching keys from $BASE_URL/keys/main.pub"
-KEYS=$(curl -fsSL "$BASE_URL/keys/main.pub") || { err "Failed to fetch keys."; exit 1; }
-[ -z "$KEYS" ] && { err "No keys found at remote."; exit 1; }
-
-# Prepare directory
-mkdir -p "$SSH_DIR"
-chmod 700 "$SSH_DIR"
-touch "$AUTH"
-chmod 600 "$AUTH"
-
-# Install keys line by line
-ADDED=0
-SKIPPED=0
-TOTAL=0
-OLDIFS=$IFS
-IFS='
-'
-for KEY in $KEYS; do
-  [ -z "$KEY" ] && continue
-  TOTAL=$((TOTAL + 1))
-  if grep -qxF "$KEY" "$AUTH" 2>/dev/null; then
-    SKIPPED=$((SKIPPED + 1))
-  else
-    printf '%s\n' "$KEY" >> "$AUTH"
-    ADDED=$((ADDED + 1))
-  fi
-done
-IFS=$OLDIFS
-
-# Fix ownership if running via sudo
-if [ -n "$OWNER" ]; then
-  chown -R "$OWNER:$OWNER" "$SSH_DIR"
-fi
-
-# Summary
-if [ "$ADDED" -gt 0 ]; then
-  ok "Added $ADDED key(s), skipped $SKIPPED (already present). Total: $TOTAL."
-else
-  warn "All $TOTAL key(s) already present, nothing to do."
-fi
-`
-	_, _ = m.upsertScript.Exec("/ssh", "Install SSH public keys", defaultSSH)
+	// Seed the "ssh" template as /ssh if available
+	for _, t := range m.templates {
+		if t.ID == "ssh" {
+			_, _ = m.upsertScript.Exec("/ssh", t.Description, t.Content)
+			return
+		}
+	}
 }

@@ -39,6 +39,8 @@
   "new_script": "New Script",
   "path_placeholder": "/init",
   "create": "Create",
+  "load_template": "Load from template",
+  "select_template": "Select a template",
   "script_desc": "Description",
   "script_desc_placeholder": "e.g. Install SSH public keys",
   "script_content": "Script Content",

@@ -39,6 +39,8 @@
   "new_script": "新建脚本",
   "path_placeholder": "/init",
   "create": "创建",
+  "load_template": "从模板加载",
+  "select_template": "选择模板",
   "script_desc": "描述",
   "script_desc_placeholder": "例如：安装 SSH 公钥",
   "script_content": "脚本内容",

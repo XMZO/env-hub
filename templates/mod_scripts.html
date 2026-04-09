@@ -1,4 +1,6 @@
-{{$scripts := .Data}}
+{{$scripts := .Data.Scripts}}
+{{$templates := .Data.Templates}}
+
 {{if $scripts}}
 {{range $scripts}}
 <div class="card">
@@ -36,15 +38,53 @@
 
 <div class="add-form">
     <h3>{{t .T "new_script"}}</h3>
-    <form method="POST" action="/admin">
+    <form method="POST" action="/admin" id="new-script-form">
         <input type="hidden" name="module" value="scripts">
         <input type="hidden" name="action" value="new">
+
+        {{if $templates}}
+        <label>{{t .T "load_template"}}</label>
+        <select id="template-select">
+            <option value="">-- {{t .T "select_template"}} --</option>
+            {{range $templates}}
+            <option value="{{.ID}}">{{.Name}} &mdash; {{.Description}}</option>
+            {{end}}
+        </select>
+        {{end}}
+
         <label>{{t .T "path"}}</label>
-        <input type="text" name="path" placeholder="{{t .T "path_placeholder"}}" required>
+        <input type="text" name="path" id="new-path" placeholder="{{t .T "path_placeholder"}}" required>
         <label>{{t .T "script_desc"}}</label>
-        <input type="text" name="description" placeholder="{{t .T "script_desc_placeholder"}}">
+        <input type="text" name="description" id="new-description" placeholder="{{t .T "script_desc_placeholder"}}">
         <label>{{t .T "script_content"}}</label>
-        <textarea name="content" rows="8" placeholder="#!/bin/sh&#10;set -eu&#10;..."></textarea>
+        <textarea name="content" id="new-content" rows="10" placeholder="#!/bin/sh&#10;set -eu&#10;..."></textarea>
         <div class="mt"><button type="submit" class="btn btn-primary">{{t .T "create"}}</button></div>
     </form>
 </div>
+
+{{if $templates}}
+<script id="script-templates-data" type="application/json">
+{
+    {{range $i, $t := $templates}}{{if $i}},{{end}}
+    "{{$t.ID}}": {
+        "path": {{$t.Path | printf "%q"}},
+        "description": {{$t.Description | printf "%q"}},
+        "content": {{$t.Content | printf "%q"}}
+    }{{end}}
+}
+</script>
+<script>
+(function(){
+    var data = JSON.parse(document.getElementById('script-templates-data').textContent);
+    var sel = document.getElementById('template-select');
+    if (!sel) return;
+    sel.addEventListener('change', function(){
+        var t = data[sel.value];
+        if (!t) return;
+        document.getElementById('new-path').value = t.path;
+        document.getElementById('new-description').value = t.description;
+        document.getElementById('new-content').value = t.content;
+    });
+})();
+</script>
+{{end}}
