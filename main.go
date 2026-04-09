@@ -219,17 +219,26 @@ func (a *app) serveHelp(w http.ResponseWriter, r *http.Request) {
 	if err != nil || len(scripts) == 0 {
 		fmt.Fprintf(w, "    (none)\n")
 	} else {
+		// Compute max command width for alignment
+		maxLen := 0
 		for _, s := range scripts {
+			cmd := fmt.Sprintf("curl -fsSL %s%s | sh", base, s.Path)
+			if len(cmd) > maxLen {
+				maxLen = len(cmd)
+			}
+		}
+		for _, s := range scripts {
+			cmd := fmt.Sprintf("curl -fsSL %s%s | sh", base, s.Path)
 			if s.Description != "" {
-				fmt.Fprintf(w, "    curl -fsSL %s%-12s # %s\n", base, s.Path, s.Description)
+				fmt.Fprintf(w, "    %-*s  # %s\n", maxLen, cmd, s.Description)
 			} else {
-				fmt.Fprintf(w, "    curl -fsSL %s%s\n", base, s.Path)
+				fmt.Fprintf(w, "    %s\n", cmd)
 			}
 		}
 	}
 
 	fmt.Fprintf(w, "\n  Other endpoints:\n\n")
-	fmt.Fprintf(w, "    %s/keys/main.pub    SSH public keys\n", base)
-	fmt.Fprintf(w, "    %s/healthz          Health check\n", base)
+	fmt.Fprintf(w, "    curl %s/keys/main.pub    # SSH public keys\n", base)
+	fmt.Fprintf(w, "    curl %s/healthz          # Health check\n", base)
 	fmt.Fprintf(w, "\n")
 }
