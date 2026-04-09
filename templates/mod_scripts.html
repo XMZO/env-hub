@@ -11,7 +11,7 @@
         <span class="card-chevron">&#9654;</span>
     </div>
     <div class="card-body">
-        <form method="POST" action="/admin">
+        <form id="save-script-{{.ID}}" method="POST" action="/admin">
             <input type="hidden" name="module" value="scripts">
             <input type="hidden" name="action" value="save">
             <input type="hidden" name="path" value="{{.Path}}">
@@ -19,16 +19,16 @@
             <input type="text" name="description" value="{{.Description}}" placeholder="{{t $.T "script_desc_placeholder"}}">
             <label>{{t $.T "script_content"}}</label>
             <textarea name="content" rows="14">{{.Content}}</textarea>
-            <div class="flex-end">
-                <button type="submit" class="btn btn-primary">{{t $.T "save"}}</button>
-            </div>
         </form>
-        <form method="POST" action="/admin" class="inline" onsubmit="return confirm('{{t $.T "delete_script_confirm"}}')">
+        <form id="delete-script-{{.ID}}" method="POST" action="/admin" onsubmit="return confirm('{{t $.T "delete_script_confirm"}}')">
             <input type="hidden" name="module" value="scripts">
             <input type="hidden" name="action" value="delete">
             <input type="hidden" name="id" value="{{.ID}}">
-            <button type="submit" class="btn btn-danger btn-sm">{{t $.T "delete"}}</button>
         </form>
+        <div class="card-actions">
+            <button type="submit" form="delete-script-{{.ID}}" class="btn btn-danger">{{t $.T "delete"}}</button>
+            <button type="submit" form="save-script-{{.ID}}" class="btn btn-primary">{{t $.T "save"}}</button>
+        </div>
     </div>
 </div>
 {{end}}

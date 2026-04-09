@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -100,13 +101,42 @@ func (m *ScriptsModule) ServeScript(w http.ResponseWriter, r *http.Request, path
 	if r.TLS == nil && r.Header.Get("X-Forwarded-Proto") == "" {
 		scheme = "http"
 	}
+
+	// Detect client IP and classify as v4 or v6 (only if valid, to prevent header injection)
+	ip, ipv4, ipv6 := "", "", ""
+	if parsed := net.ParseIP(realIP(r)); parsed != nil {
+		ip = parsed.String()
+		if parsed.To4() != nil {
+			ipv4 = ip
+		} else {
+			ipv6 = ip
+		}
+	}
+
 	// Strip CRLF — shell scripts must use LF line endings
 	content := strings.ReplaceAll(s.Content, "\r\n", "\n")
 	content = strings.ReplaceAll(content, "\r", "")
-	content = strings.Replace(content, "__BASE_URL__", scheme+"://"+r.Host, -1)
 
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("Cache-Control", "public, max-age=60")
+	// Per-client placeholders disable CF caching
+	perClient := strings.Contains(content, "__CLIENT_IP")
+
+	content = strings.Replace(content, "__BASE_URL__", scheme+"://"+r.Host, -1)
+	content = strings.Replace(content, "__CLIENT_IP__", ip, -1)
+	content = strings.Replace(content, "__CLIENT_IPV4__", ipv4, -1)
+	content = strings.Replace(content, "__CLIENT_IPV6__", ipv6, -1)
+
+	// Auto-detect JSON content by first non-whitespace char
+	trimmed := strings.TrimLeft(content, " \t\r\n")
+	if strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[") {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	} else {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	}
+	if perClient {
+		w.Header().Set("Cache-Control", "no-store")
+	} else {
+		w.Header().Set("Cache-Control", "public, max-age=60")
+	}
 	fmt.Fprint(w, content)
 	return true
 }
@@ -156,6 +186,7 @@ func (m *ScriptsModule) AdminAction(action string, r *http.Request) error {
 type ScriptInfo struct {
 	Path        string
 	Description string
+	IsData      bool // true if content is data (JSON/text), false if shell script
 }
 
 // ListPaths returns all registered script paths with descriptions.
@@ -171,7 +202,10 @@ func (m *ScriptsModule) ListPaths() ([]ScriptInfo, error) {
 		if err := rows.Scan(&s.ID, &s.Path, &s.Description, &s.Content, &s.UpdatedAt); err != nil {
 			return nil, err
 		}
-		infos = append(infos, ScriptInfo{Path: s.Path, Description: s.Description})
+		// Detect data (JSON/array) vs shell script by first non-whitespace char
+		trimmed := strings.TrimLeft(s.Content, " \t\r\n")
+		isData := strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[")
+		infos = append(infos, ScriptInfo{Path: s.Path, Description: s.Description, IsData: isData})
 	}
 	return infos, rows.Err()
 }

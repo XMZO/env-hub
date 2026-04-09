@@ -227,20 +227,24 @@ func (a *app) serveHelp(w http.ResponseWriter, r *http.Request) {
 	if err != nil || len(scripts) == 0 {
 		fmt.Fprintf(w, "    (none)\n")
 	} else {
-		// Compute max command width for alignment
+		// Build commands: shell scripts get "| sh", data routes (JSON) just plain curl
+		cmds := make([]string, len(scripts))
 		maxLen := 0
-		for _, s := range scripts {
-			cmd := fmt.Sprintf("curl -fsSL %s%s | sh", base, s.Path)
-			if len(cmd) > maxLen {
-				maxLen = len(cmd)
+		for i, s := range scripts {
+			if s.IsData {
+				cmds[i] = fmt.Sprintf("curl -fsSL %s%s", base, s.Path)
+			} else {
+				cmds[i] = fmt.Sprintf("curl -fsSL %s%s | sh", base, s.Path)
+			}
+			if len(cmds[i]) > maxLen {
+				maxLen = len(cmds[i])
 			}
 		}
-		for _, s := range scripts {
-			cmd := fmt.Sprintf("curl -fsSL %s%s | sh", base, s.Path)
+		for i, s := range scripts {
 			if s.Description != "" {
-				fmt.Fprintf(w, "    %-*s  # %s\n", maxLen, cmd, s.Description)
+				fmt.Fprintf(w, "    %-*s  # %s\n", maxLen, cmds[i], s.Description)
 			} else {
-				fmt.Fprintf(w, "    %s\n", cmd)
+				fmt.Fprintf(w, "    %s\n", cmds[i])
 			}
 		}
 	}
