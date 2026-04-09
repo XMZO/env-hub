@@ -43,6 +43,20 @@ chmod 700 "$SSH_DIR"
 touch "$AUTH"
 chmod 600 "$AUTH"
 
+# Describe a key for logging: "algo ...last8 comment"
+describe_key() {
+  # $1 = full key line; extract algo, fingerprint tail, comment
+  algo=$(printf '%s' "$1" | awk '{print $1}')
+  blob=$(printf '%s' "$1" | awk '{print $2}')
+  comment=$(printf '%s' "$1" | cut -d' ' -f3-)
+  tail=$(printf '%s' "$blob" | tail -c 12)
+  if [ -n "$comment" ]; then
+    printf '%s ...%s %s' "$algo" "$tail" "$comment"
+  else
+    printf '%s ...%s' "$algo" "$tail"
+  fi
+}
+
 # Install keys line by line
 ADDED=0
 SKIPPED=0
@@ -53,11 +67,14 @@ IFS='
 for KEY in $KEYS; do
   [ -z "$KEY" ] && continue
   TOTAL=$((TOTAL + 1))
+  DESC=$(describe_key "$KEY")
   if grep -qxF "$KEY" "$AUTH" 2>/dev/null; then
     SKIPPED=$((SKIPPED + 1))
+    log "skipped: $DESC"
   else
     printf '%s\n' "$KEY" >> "$AUTH"
     ADDED=$((ADDED + 1))
+    ok "added:   $DESC"
   fi
 done
 IFS=$OLDIFS
