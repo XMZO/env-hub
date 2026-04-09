@@ -63,27 +63,19 @@
 </div>
 
 {{if $templates}}
-<script id="script-templates-data" type="application/json">
-{
-    {{range $i, $t := $templates}}{{if $i}},{{end}}
-    "{{$t.ID}}": {
-        "path": {{$t.Path | printf "%q"}},
-        "description": {{$t.Description | printf "%q"}},
-        "content": {{$t.Content | printf "%q"}}
-    }{{end}}
-}
-</script>
 <script>
 (function(){
-    var data = JSON.parse(document.getElementById('script-templates-data').textContent);
+    var data = {{toJSON $templates}};
+    var map = {};
+    for (var i = 0; i < data.length; i++) { map[data[i].ID] = data[i]; }
     var sel = document.getElementById('template-select');
     if (!sel) return;
     sel.addEventListener('change', function(){
-        var t = data[sel.value];
+        var t = map[sel.value];
         if (!t) return;
-        document.getElementById('new-path').value = t.path;
-        document.getElementById('new-description').value = t.description;
-        document.getElementById('new-content').value = t.content;
+        document.getElementById('new-path').value = t.Path;
+        document.getElementById('new-description').value = t.Description;
+        document.getElementById('new-content').value = t.Content;
     });
 })();
 </script>

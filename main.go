@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -112,6 +113,13 @@ func main() {
 					return ""
 				}
 				return template.HTML(buf.String())
+			},
+			"toJSON": func(v any) template.JS {
+				b, err := json.Marshal(v)
+				if err != nil {
+					return template.JS("null")
+				}
+				return template.JS(b)
 			},
 		}).ParseFS(templateFS, "templates/*.html"),
 	)
