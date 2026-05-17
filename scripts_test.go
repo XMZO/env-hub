@@ -28,3 +28,41 @@ func TestScriptShell(t *testing.T) {
 		}
 	}
 }
+
+func TestNormalizeScriptPath(t *testing.T) {
+	valid := map[string]string{
+		"ip":         "/ip",
+		" /ips ":     "/ips",
+		"/nodejs":    "/nodejs",
+		"/dev-tools": "/dev-tools",
+		"/v1.2_3":    "/v1.2_3",
+	}
+	for input, want := range valid {
+		got, err := normalizeScriptPath(input)
+		if err != nil {
+			t.Fatalf("normalizeScriptPath(%q) returned error: %v", input, err)
+		}
+		if got != want {
+			t.Fatalf("normalizeScriptPath(%q) = %q, want %q", input, got, want)
+		}
+	}
+
+	invalid := []string{
+		"",
+		"/",
+		"/foo/bar",
+		"foo/bar",
+		"/foo?bar",
+		"/foo#bar",
+		"/foo bar",
+		"/中文",
+		"/admin",
+		"/healthz",
+		"/lang",
+	}
+	for _, input := range invalid {
+		if got, err := normalizeScriptPath(input); err == nil {
+			t.Fatalf("normalizeScriptPath(%q) = %q, want error", input, got)
+		}
+	}
+}

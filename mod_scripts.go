@@ -168,16 +168,13 @@ func (m *ScriptsModule) AdminData() (any, error) {
 func (m *ScriptsModule) AdminAction(action string, r *http.Request) error {
 	switch action {
 	case "save", "new":
-		path := strings.TrimSpace(r.FormValue("path"))
+		path, err := normalizeScriptPath(r.FormValue("path"))
+		if err != nil {
+			return err
+		}
 		desc := strings.TrimSpace(r.FormValue("description"))
 		content := r.FormValue("content")
-		if path == "" {
-			return nil
-		}
-		if !strings.HasPrefix(path, "/") {
-			path = "/" + path
-		}
-		_, err := m.upsertScript.Exec(path, desc, content)
+		_, err = m.upsertScript.Exec(path, desc, content)
 		return err
 
 	case "delete":
@@ -188,6 +185,35 @@ func (m *ScriptsModule) AdminAction(action string, r *http.Request) error {
 		}
 	}
 	return nil
+}
+
+func normalizeScriptPath(raw string) (string, error) {
+	path := strings.TrimSpace(raw)
+	if path == "" {
+		return "", adminBadRequest("script path is required")
+	}
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	name := strings.TrimPrefix(path, "/")
+	if name == "" || strings.Contains(name, "/") {
+		return "", invalidScriptPathError(raw)
+	}
+	for _, r := range name {
+		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '.' || r == '_' || r == '-' {
+			continue
+		}
+		return "", invalidScriptPathError(raw)
+	}
+	switch name {
+	case "admin", "healthz", "lang":
+		return "", adminBadRequest("script path is reserved")
+	}
+	return path, nil
+}
+
+func invalidScriptPathError(raw string) error {
+	return adminBadRequest(fmt.Sprintf("invalid script path %q: use a single route like /init with letters, numbers, dot, dash, or underscore", strings.TrimSpace(raw)))
 }
 
 // ScriptInfo holds path + description for help display.

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"net/url"
@@ -142,17 +143,70 @@ func (a *app) handleAdmin(w http.ResponseWriter, r *http.Request) {
 func (a *app) handleAdminPost(w http.ResponseWriter, r *http.Request) {
 	moduleName := r.FormValue("module")
 	action := r.FormValue("action")
+	jsonResponse := wantsAdminJSON(r)
 
+	var actionErr error
+	found := false
 	for _, m := range a.modules {
 		if m.Name() == moduleName {
-			if err := m.AdminAction(action, r); err != nil {
-				log.Printf("module %s action %s error: %v", moduleName, action, err)
-			}
+			found = true
+			actionErr = m.AdminAction(action, r)
 			break
 		}
 	}
+	if !found {
+		actionErr = adminBadRequest("unknown admin module")
+	}
+	if actionErr != nil {
+		log.Printf("module %s action %s error: %v", moduleName, action, actionErr)
+		if jsonResponse {
+			writeAdminJSONError(w, actionErr)
+			return
+		}
+	}
 
+	if jsonResponse {
+		writeAdminJSON(w, http.StatusOK, map[string]any{"ok": true})
+		return
+	}
 	http.Redirect(w, r, "/admin", http.StatusFound)
+}
+
+type adminHTTPError struct {
+	status  int
+	message string
+}
+
+func (e adminHTTPError) Error() string {
+	return e.message
+}
+
+func adminBadRequest(message string) error {
+	return adminHTTPError{status: http.StatusBadRequest, message: message}
+}
+
+func wantsAdminJSON(r *http.Request) bool {
+	return r.Header.Get("X-Requested-With") == "fetch" || strings.Contains(r.Header.Get("Accept"), "application/json")
+}
+
+func writeAdminJSONError(w http.ResponseWriter, err error) {
+	status := http.StatusInternalServerError
+	message := "internal error"
+	var httpErr adminHTTPError
+	if errors.As(err, &httpErr) {
+		status = httpErr.status
+		message = httpErr.message
+	}
+	writeAdminJSON(w, status, map[string]any{"ok": false, "error": message})
+}
+
+func writeAdminJSON(w http.ResponseWriter, status int, payload map[string]any) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		log.Printf("admin json encode error: %v", err)
+	}
 }
 
 // --- Turnstile verification ---

@@ -11,7 +11,11 @@
         <span class="card-chevron">&#9654;</span>
     </div>
     <div class="card-body">
-        <form id="save-script-{{.ID}}" method="POST" action="/admin">
+        <div class="command-row">
+            <code class="command-text" data-script-path="{{.Path}}" data-script-shell="{{.Shell}}" data-script-data="{{if .IsData}}1{{else}}0{{end}}"></code>
+            <button type="button" class="btn btn-secondary btn-sm copy-command" data-i18n="copy">{{t $.T "copy"}}</button>
+        </div>
+        <form id="save-script-{{.ID}}" class="script-save-form" method="POST" action="/admin">
             <input type="hidden" name="module" value="scripts">
             <input type="hidden" name="action" value="save">
             <input type="hidden" name="path" value="{{.Path}}">
@@ -37,6 +41,7 @@
                 <button type="submit" form="delete-script-{{.ID}}" class="btn btn-danger" data-i18n="delete">{{t $.T "delete"}}</button>
             </div>
             <div class="action-group">
+                <span class="save-status" aria-live="polite"></span>
                 <button type="submit" form="save-script-{{.ID}}" class="btn btn-primary" data-i18n="save">{{t $.T "save"}}</button>
             </div>
         </div>
@@ -64,7 +69,7 @@
         {{end}}
 
         <label data-i18n="path">{{t .T "path"}}</label>
-        <input type="text" name="path" id="new-path" placeholder="{{t .T "path_placeholder"}}" data-i18n-placeholder="path_placeholder" required>
+        <input type="text" name="path" id="new-path" placeholder="{{t .T "path_placeholder"}}" data-i18n-placeholder="path_placeholder" pattern="/?[A-Za-z0-9._-]+" required>
         <label data-i18n="script_desc">{{t .T "script_desc"}}</label>
         <input type="text" name="description" id="new-description" placeholder="{{t .T "script_desc_placeholder"}}" data-i18n-placeholder="script_desc_placeholder">
         <label data-i18n="script_shell">{{t .T "script_shell"}}</label>
@@ -85,6 +90,12 @@
 
 <script>
 (function(){
+    function t(key) {
+        var state = window.envHubI18n || {};
+        var dict = state.translations && state.translations[state.lang];
+        return dict && dict[key] !== undefined ? dict[key] : key;
+    }
+
     function detectShell(content) {
         var lines = (content || '').split(/\r?\n/);
         for (var i = 0; i < lines.length; i++) {
@@ -105,12 +116,81 @@
         return content ? shebang + '\n' + content : shebang + '\nset -eu\n';
     }
 
+    function isDataContent(content) {
+        return /^\s*[\{\[]/.test(content || '');
+    }
+
+    function buildCommand(el) {
+        var path = el.dataset.scriptPath || '/';
+        var base = window.location.origin;
+        var cmd = 'curl -fsSL ' + base + path;
+        if (el.dataset.scriptData !== '1') cmd += ' | ' + (el.dataset.scriptShell || 'sh');
+        return cmd;
+    }
+
+    function copyText(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text);
+        }
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand('copy');
+            return Promise.resolve();
+        } catch (err) {
+            return Promise.reject(err);
+        } finally {
+            document.body.removeChild(ta);
+        }
+    }
+
+    function setStatus(form, key, cls) {
+        var card = form.closest('.card');
+        var status = card && card.querySelector('.save-status');
+        if (!status) return;
+        status.textContent = key ? t(key) : '';
+        status.className = 'save-status' + (cls ? ' ' + cls : '');
+    }
+
+    function pad2(n) {
+        return String(n).padStart(2, '0');
+    }
+
+    function syncCardHeader(form) {
+        var card = form.closest('.card');
+        if (!card) return;
+        var descInput = form.querySelector('input[name="description"]');
+        var desc = card.querySelector('.card-desc');
+        if (desc && descInput) desc.textContent = descInput.value;
+        var meta = card.querySelector('.card-meta');
+        var now = new Date();
+        if (meta) meta.textContent = pad2(now.getMonth() + 1) + '-' + pad2(now.getDate()) + ' ' + pad2(now.getHours()) + ':' + pad2(now.getMinutes());
+    }
+
+    function refreshCommands(scope) {
+        (scope || document).querySelectorAll('.command-text').forEach(function(el){
+            el.textContent = buildCommand(el);
+            el.title = el.textContent;
+        });
+    }
+
     document.querySelectorAll('.script-shell-select').forEach(function(sel){
         sel.addEventListener('change', function(){
             var form = sel.closest('form');
             var content = form && form.querySelector('.script-content');
             if (!content) return;
             content.value = setShell(content.value, sel.value);
+            var card = form.closest('.card');
+            var command = card && card.querySelector('.command-text');
+            if (command) {
+                command.dataset.scriptData = '0';
+                command.dataset.scriptShell = sel.value === 'bash' ? 'bash' : 'sh';
+                refreshCommands(card);
+            }
         });
     });
 
@@ -119,8 +199,65 @@
             var form = content.closest('form');
             var sel = form && form.querySelector('.script-shell-select');
             if (sel) sel.value = detectShell(content.value);
+            var card = form && form.closest('.card');
+            var command = card && card.querySelector('.command-text');
+            if (command) {
+                command.dataset.scriptData = isDataContent(content.value) ? '1' : '0';
+                if (sel) command.dataset.scriptShell = sel.value;
+                refreshCommands(card);
+            }
         });
     });
+
+    document.querySelectorAll('.copy-command').forEach(function(btn){
+        btn.addEventListener('click', function(){
+            var row = btn.closest('.command-row');
+            var command = row && row.querySelector('.command-text');
+            if (!command) return;
+            copyText(command.textContent).then(function(){
+                var old = btn.textContent;
+                btn.textContent = t('copied');
+                window.setTimeout(function(){ btn.textContent = old; }, 1200);
+            }).catch(function(){
+                btn.textContent = t('copy_failed');
+            });
+        });
+    });
+
+    document.querySelectorAll('.script-save-form').forEach(function(form){
+        form.addEventListener('submit', function(e){
+            e.preventDefault();
+            setStatus(form, 'saving', '');
+            var submit = document.querySelector('[form="' + form.id + '"][type="submit"]');
+            if (submit) submit.disabled = true;
+            fetch(form.getAttribute('action') || '/admin', {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'fetch'
+                },
+                credentials: 'same-origin'
+            }).then(function(resp){
+                return resp.json().catch(function(){ return {ok:false,error:'invalid response'}; }).then(function(data){
+                    if (!resp.ok || !data.ok) throw new Error(data.error || resp.statusText);
+                    syncCardHeader(form);
+                    setStatus(form, 'saved', 'ok');
+                });
+            }).catch(function(err){
+                var card = form.closest('.card');
+                var status = card && card.querySelector('.save-status');
+                if (status) {
+                    status.textContent = err.message || t('save_failed');
+                    status.className = 'save-status error';
+                }
+            }).finally(function(){
+                if (submit) submit.disabled = false;
+            });
+        });
+    });
+
+    refreshCommands(document);
 
     {{if $templates}}
     var data = {{toJSON $templates}};

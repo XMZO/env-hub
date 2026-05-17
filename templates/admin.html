@@ -78,6 +78,11 @@
         .add-form h3{font-size:.95em;margin-bottom:.5em;color:var(--text)}
         .empty{text-align:center;padding:2em;color:var(--muted);font-size:.9em}
         .badge{display:inline-block;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:.1em .5em;font-size:.7em;color:var(--muted);font-family:monospace}
+        .command-row{display:flex;gap:.5em;align-items:center;margin:.1em 0 .6em}
+        .command-text{flex:1;min-width:0;padding:.45em .65em;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);font-family:monospace;font-size:.8em;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .save-status{font-size:.8em;color:var(--muted);min-height:1.2em}
+        .save-status.ok{color:var(--accent)}
+        .save-status.error{color:var(--danger)}
 
         /* Responsive */
         @media(max-width:600px){
@@ -86,6 +91,8 @@
             .main{padding:1em .8em}
             .card-header{flex-wrap:wrap}
             .card-desc{order:3;width:100%;margin-left:0;margin-top:.3em}
+            .command-row{align-items:stretch}
+            .command-row .btn{flex:0 0 auto}
             .key-text{max-width:150px}
             th:nth-child(2),td:nth-child(2){display:none}
         }
