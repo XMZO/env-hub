@@ -12,10 +12,11 @@
         /* Header */
         .header{background:var(--surface);border-bottom:1px solid var(--border);padding:1em 1.5em;position:sticky;top:0;z-index:10;backdrop-filter:blur(10px)}
         .header-inner{max-width:900px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5em}
-        .header h1{font-size:1.3em;font-weight:600}
+        .header h1{font-size:1.3em;font-weight:600;display:inline-flex;align-items:baseline;gap:.45em;flex-wrap:wrap}
         .header-actions{display:flex;gap:1em;font-size:.85em}
         .header-actions a{color:var(--accent);text-decoration:none;opacity:.8;transition:var(--transition)}
         .header-actions a:hover{opacity:1}
+        .version-badge{font-family:monospace;color:var(--muted);font-size:.58em;font-weight:500;line-height:1}
 
         /* Main */
         .main{max-width:900px;margin:0 auto;padding:1.5em 1em}
@@ -100,7 +101,7 @@
 <body>
     <div class="header">
         <div class="header-inner">
-            <h1>{{.Host}} <span data-i18n="admin_panel">{{t .T "admin_panel"}}</span></h1>
+            <h1>{{.Host}} <span data-i18n="admin_panel">{{t .T "admin_panel"}}</span> <span class="version-badge">{{.Version}}</span></h1>
             <div class="header-actions">
                 <a href="/lang?to={{index .T "lang_code"}}" data-lang-toggle data-i18n="lang_switch">{{t .T "lang_switch"}}</a>
                 <a href="/admin/logout" data-i18n="logout">{{t .T "logout"}}</a>

@@ -19,6 +19,8 @@ import (
 //go:embed templates/*
 var templateFS embed.FS
 
+var version = "dev"
+
 type app struct {
 	modules       []Module
 	scripts       *ScriptsModule

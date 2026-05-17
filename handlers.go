@@ -135,6 +135,7 @@ func (a *app) handleAdmin(w http.ResponseWriter, r *http.Request) {
 		"Lang":         lang,
 		"Translations": a.i18n.All(),
 		"Host":         r.Host,
+		"Version":      version,
 		"Modules":      moduleViews,
 	}
 	if err := a.tmpl.ExecuteTemplate(w, "admin.html", pageData); err != nil {
