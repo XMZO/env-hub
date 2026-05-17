@@ -52,7 +52,9 @@ go run .
 
 ## 脚本模拟运行
 
-Docker 部署会把宿主机 `/var/run/docker.sock` 挂进 env-hub 容器，并在镜像内安装 `docker-cli`。因此后台的“模拟运行”会通过宿主机 Docker daemon 创建一次性沙盒容器来执行脚本。
+Docker 部署会把宿主机 `/var/run/docker.sock` 挂进 env-hub 容器，并在镜像内安装 `bash`、`curl` 和 `docker-cli`。因此后台的“模拟运行”会通过宿主机 Docker daemon 创建一次性沙盒容器来执行脚本，默认沙盒镜像使用当前 env-hub 镜像。
+
+如需使用自定义沙盒镜像，可设置 `SIMULATION_IMAGE`。镜像里至少应包含 `/bin/sh`，如果需要 bash 脚本则还应包含 `/bin/bash`。
 
 注意：挂载 Docker socket 等价于允许 env-hub 控制宿主机 Docker。请只在可信的管理后台环境使用，并务必保护好 `ADMIN_TOKEN`。
 

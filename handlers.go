@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -217,11 +218,10 @@ func runScriptSimulation(ctx context.Context, content, shell string, allowNetwor
 	runCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	defer cancel()
 
-	image := "alpine:latest"
+	image := simulationImage()
 	args := []string{"/bin/sh", "-s"}
 	if shell == "bash" {
-		image = "bash:5.2-alpine"
-		args = []string{"/usr/local/bin/bash", "-s"}
+		args = []string{"/bin/bash", "-s"}
 	}
 
 	containerName := "env-hub-sim-" + strconv.FormatInt(time.Now().UnixNano(), 36)
@@ -241,6 +241,7 @@ func runScriptSimulation(ctx context.Context, content, shell string, allowNetwor
 		"--tmpfs", "/tmp:rw,nosuid,nodev,size=64m,mode=1777",
 		"--workdir", "/tmp",
 		"--env", "HOME=/tmp",
+		"--entrypoint", "",
 		"--stop-timeout", "2",
 	}
 	if !allowNetwork {
@@ -287,12 +288,22 @@ func runScriptSimulation(ctx context.Context, content, shell string, allowNetwor
 	return resp
 }
 
+func simulationImage() string {
+	if image := strings.TrimSpace(os.Getenv("SIMULATION_IMAGE")); image != "" {
+		return image
+	}
+	if image := strings.TrimSpace(os.Getenv("ENV_HUB_IMAGE")); image != "" {
+		return image
+	}
+	return "ghcr.io/xmzo/env-hub:latest"
+}
+
 func scriptSimulationSandboxSummary(allowNetwork bool) string {
 	network := "network=disabled"
 	if allowNetwork {
 		network = "network=enabled"
 	}
-	return "docker, " + network + ", user=65534:65534, no host mounts, read-only rootfs, cap-drop=ALL, no-new-privileges, tmpfs=/tmp, cpu=1, memory=256m, pids=128, timeout=45s"
+	return "docker, " + network + ", image=" + simulationImage() + ", user=65534:65534, no host mounts, read-only rootfs, cap-drop=ALL, no-new-privileges, tmpfs=/tmp, cpu=1, memory=256m, pids=128, timeout=45s"
 }
 
 func limitSimulationOutput(output string) string {
