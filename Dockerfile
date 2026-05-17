@@ -8,10 +8,11 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /env-hub .
 
-FROM scratch
-COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+FROM alpine:3.22
+RUN apk add --no-cache ca-certificates docker-cli
 COPY --from=build /env-hub /env-hub
 VOLUME /data
 EXPOSE 9800
 ENV DATA_DIR=/data
+ENV DOCKER_HOST=unix:///var/run/docker.sock
 ENTRYPOINT ["/env-hub"]

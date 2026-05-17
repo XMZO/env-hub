@@ -10,3 +10,10 @@ services:
       - TURNSTILE_KEYS=${TURNSTILE_KEYS}
     volumes:
       - ./data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - app-net
+
+networks:
+  app-net:
+    enable_ipv6: true

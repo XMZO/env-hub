@@ -11,6 +11,7 @@ curl -fsSL https://env.moe/ssh | sh
 - **脚本分发**：通过 HTTP 路由返回可直接执行的 shell 脚本
 - **SSH 公钥管理**：Web UI 增删公钥，`/ssh` 脚本自动安装
 - **脚本在线编辑**：通过管理后台新增、编辑、删除脚本路由
+- **脚本模拟运行**：通过 Docker 沙盒试跑脚本，可选择是否允许联网
 - **Token 鉴权**：管理后台使用简单 Token 保护
 
 ## 快速开始
@@ -48,6 +49,12 @@ go run .
 | `ADMIN_TOKEN` | 是 | - | 管理后台访问 Token |
 | `LISTEN_ADDR` | 否 | `:9800` | 监听地址 |
 | `DATA_DIR` | 否 | `./data` | SQLite 数据文件目录 |
+
+## 脚本模拟运行
+
+Docker 部署会把宿主机 `/var/run/docker.sock` 挂进 env-hub 容器，并在镜像内安装 `docker-cli`。因此后台的“模拟运行”会通过宿主机 Docker daemon 创建一次性沙盒容器来执行脚本。
+
+注意：挂载 Docker socket 等价于允许 env-hub 控制宿主机 Docker。请只在可信的管理后台环境使用，并务必保护好 `ADMIN_TOKEN`。
 
 ## 路由
 
