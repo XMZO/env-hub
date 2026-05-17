@@ -28,6 +28,14 @@ type Script struct {
 	UpdatedAt   time.Time
 }
 
+func (s Script) Shell() string {
+	return scriptShell(s.Content)
+}
+
+func (s Script) IsData() bool {
+	return scriptIsData(s.Content)
+}
+
 func NewScriptsModule() *ScriptsModule {
 	return &ScriptsModule{}
 }
@@ -187,6 +195,7 @@ type ScriptInfo struct {
 	Path        string
 	Description string
 	IsData      bool // true if content is data (JSON/text), false if shell script
+	Shell       string
 }
 
 // ListPaths returns all registered script paths with descriptions.
@@ -202,12 +211,34 @@ func (m *ScriptsModule) ListPaths() ([]ScriptInfo, error) {
 		if err := rows.Scan(&s.ID, &s.Path, &s.Description, &s.Content, &s.UpdatedAt); err != nil {
 			return nil, err
 		}
-		// Detect data (JSON/array) vs shell script by first non-whitespace char
-		trimmed := strings.TrimLeft(s.Content, " \t\r\n")
-		isData := strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[")
-		infos = append(infos, ScriptInfo{Path: s.Path, Description: s.Description, IsData: isData})
+		infos = append(infos, ScriptInfo{
+			Path:        s.Path,
+			Description: s.Description,
+			IsData:      scriptIsData(s.Content),
+			Shell:       scriptShell(s.Content),
+		})
 	}
 	return infos, rows.Err()
+}
+
+func scriptIsData(content string) bool {
+	trimmed := strings.TrimLeft(content, " \t\r\n")
+	return strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[")
+}
+
+func scriptShell(content string) string {
+	lines := strings.Split(strings.ReplaceAll(content, "\r\n", "\n"), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "#!") && strings.Contains(line, "bash") {
+			return "bash"
+		}
+		return "sh"
+	}
+	return "sh"
 }
 
 func (m *ScriptsModule) list() ([]Script, error) {

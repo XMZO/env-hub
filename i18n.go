@@ -54,6 +54,17 @@ func (i *I18n) GetLang(lang string) map[string]string {
 	return i.langs[i.fallback]
 }
 
+func (i *I18n) ResolveLang(lang string) string {
+	if _, ok := i.langs[lang]; ok {
+		return lang
+	}
+	return i.fallback
+}
+
+func (i *I18n) All() map[string]map[string]string {
+	return i.langs
+}
+
 // T looks up a single key.
 func (i *I18n) T(lang, key string) string {
 	if m, ok := i.langs[lang]; ok {

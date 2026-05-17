@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{index .T "lang_code"}}">
+<html lang="{{.Lang}}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -61,6 +61,8 @@
         .btn:hover{transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.3)}
         .btn:active{transform:translateY(0)}
         .btn-primary{background:var(--accent);color:var(--bg)}
+        .btn-secondary{background:var(--bg);color:var(--text);border:1px solid var(--border)}
+        .btn-secondary:hover{border-color:var(--accent)}
         .btn-danger{background:var(--danger);color:#fff}
         .btn-danger:hover{background:#c0392b}
         .btn-sm{padding:.3em .7em;font-size:.8em}
@@ -70,6 +72,14 @@
         .mt{margin-top:.5em}
         .flex-end{display:flex;gap:.5em;align-items:center;margin-top:.5em}
         .card-actions{display:flex;gap:.5em;justify-content:space-between;align-items:center;margin-top:.8em;padding-top:.8em;border-top:1px solid var(--border)}
+        .action-group{display:flex;gap:.5em;align-items:center;flex-wrap:wrap}
+        .inline-check{display:inline-flex;align-items:center;gap:.35em;color:var(--muted);font-size:.82em;user-select:none}
+        .inline-check input{accent-color:var(--accent)}
+        .simulation-output{display:none;margin-top:.8em;padding:.75em;background:#0f172a;border:1px solid var(--border);border-radius:var(--radius);color:#d8dee9;font-family:monospace;font-size:.8em;white-space:pre-wrap;word-break:break-word;max-height:22em;overflow:auto}
+        .simulation-output.show{display:block}
+        .simulation-output.ok{border-color:rgba(127,219,202,.55)}
+        .simulation-output.fail{border-color:rgba(231,76,60,.65)}
+        .sandbox-note{margin-top:.45em;color:var(--muted);font-size:.78em}
         .add-form{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1em;margin-top:1em}
         .add-form h3{font-size:.95em;margin-bottom:.5em;color:var(--text)}
         .empty{text-align:center;padding:2em;color:var(--muted);font-size:.9em}
@@ -90,10 +100,10 @@
 <body>
     <div class="header">
         <div class="header-inner">
-            <h1>{{.Host}} {{t .T "admin_panel"}}</h1>
+            <h1>{{.Host}} <span data-i18n="admin_panel">{{t .T "admin_panel"}}</span></h1>
             <div class="header-actions">
-                <a href="/lang?to={{index .T "lang_code"}}">{{t .T "lang_switch"}}</a>
-                <a href="/admin/logout">{{t .T "logout"}}</a>
+                <a href="/lang?to={{index .T "lang_code"}}" data-lang-toggle data-i18n="lang_switch">{{t .T "lang_switch"}}</a>
+                <a href="/admin/logout" data-i18n="logout">{{t .T "logout"}}</a>
             </div>
         </div>
     </div>
@@ -101,7 +111,7 @@
     <div class="main">
         <div class="tabs">
             {{range $i, $m := .Modules}}
-            <div class="tab{{if eq $i 0}} active{{end}}" data-tab="tab-{{$m.Name}}">{{t $m.T $m.Name}}</div>
+            <div class="tab{{if eq $i 0}} active{{end}}" data-tab="tab-{{$m.Name}}" data-i18n="{{$m.Name}}">{{t $m.T $m.Name}}</div>
             {{end}}
         </div>
 
@@ -113,6 +123,69 @@
     </div>
 
     <script>
+    window.envHubI18n = {
+        lang: {{toJSON .Lang}},
+        translations: {{toJSON .Translations}},
+        titleSuffixKey: 'admin_panel',
+        host: {{toJSON .Host}}
+    };
+
+    function setCookie(name, value, maxAge) {
+        document.cookie = name + '=' + encodeURIComponent(value) + '; Path=/; SameSite=Lax; Max-Age=' + maxAge;
+    }
+
+    function applyLang(lang) {
+        var state = window.envHubI18n || {};
+        var dict = state.translations && state.translations[lang];
+        if (!dict) return;
+        state.lang = lang;
+        document.documentElement.lang = lang;
+        document.title = state.host + ' — ' + (dict[state.titleSuffixKey] || state.titleSuffixKey);
+
+        document.querySelectorAll('[data-i18n]').forEach(function(el){
+            var key = el.getAttribute('data-i18n');
+            if (dict[key] !== undefined) el.textContent = dict[key];
+        });
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el){
+            var key = el.getAttribute('data-i18n-placeholder');
+            if (dict[key] !== undefined) el.setAttribute('placeholder', dict[key]);
+        });
+        document.querySelectorAll('[data-i18n-option-wrap]').forEach(function(el){
+            var key = el.getAttribute('data-i18n-option-wrap');
+            if (dict[key] !== undefined) el.textContent = '-- ' + dict[key] + ' --';
+        });
+        document.querySelectorAll('[data-i18n-confirm]').forEach(function(el){
+            var key = el.getAttribute('data-i18n-confirm');
+            if (dict[key] !== undefined) el.dataset.confirmMessage = dict[key];
+        });
+        document.querySelectorAll('[data-i18n-prefix]').forEach(function(el){
+            var key = el.getAttribute('data-i18n-prefix');
+            if (dict[key] !== undefined) el.dataset.i18nPrefixText = dict[key];
+        });
+        document.querySelectorAll('[data-lang-toggle]').forEach(function(el){
+            var next = dict.lang_code || 'en';
+            el.setAttribute('href', '/lang?to=' + encodeURIComponent(next));
+        });
+    }
+
+    document.addEventListener('submit', function(e){
+        var form = e.target;
+        var message = form && form.dataset.confirmMessage;
+        if (message && !confirm(message)) e.preventDefault();
+    }, true);
+
+    document.querySelectorAll('[data-lang-toggle]').forEach(function(link){
+        link.addEventListener('click', function(e){
+            var state = window.envHubI18n || {};
+            var dict = state.translations && state.translations[state.lang];
+            var next = dict && dict.lang_code;
+            if (!next || !state.translations[next]) return;
+            e.preventDefault();
+            setCookie('lang', next, 365 * 24 * 60 * 60);
+            applyLang(next);
+        });
+    });
+
     document.querySelectorAll('.tab').forEach(tab=>{
         tab.addEventListener('click',()=>{
             document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
