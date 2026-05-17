@@ -37,20 +37,9 @@
                 <button type="submit" form="delete-script-{{.ID}}" class="btn btn-danger" data-i18n="delete">{{t $.T "delete"}}</button>
             </div>
             <div class="action-group">
-                {{if not .IsData}}
-                <label class="inline-check">
-                    <input type="checkbox" class="simulate-network">
-                    <span data-i18n="simulate_allow_network">{{t $.T "simulate_allow_network"}}</span>
-                </label>
-                <button type="button" class="btn btn-secondary simulate-script" data-form="save-script-{{.ID}}" data-i18n="simulate_run">{{t $.T "simulate_run"}}</button>
-                {{end}}
                 <button type="submit" form="save-script-{{.ID}}" class="btn btn-primary" data-i18n="save">{{t $.T "save"}}</button>
             </div>
         </div>
-        {{if not .IsData}}
-        <pre class="simulation-output" aria-live="polite"></pre>
-        <p class="sandbox-note" data-i18n="sandbox_note">{{t $.T "sandbox_note"}}</p>
-        {{end}}
     </div>
 </div>
 {{end}}
@@ -88,16 +77,9 @@
         <div class="card-actions">
             <div></div>
             <div class="action-group">
-                <label class="inline-check">
-                    <input type="checkbox" class="simulate-network">
-                    <span data-i18n="simulate_allow_network">{{t .T "simulate_allow_network"}}</span>
-                </label>
-                <button type="button" class="btn btn-secondary simulate-script" data-form="new-script-form" data-i18n="simulate_run">{{t .T "simulate_run"}}</button>
                 <button type="submit" class="btn btn-primary" data-i18n="create">{{t .T "create"}}</button>
             </div>
         </div>
-        <pre class="simulation-output" aria-live="polite"></pre>
-        <p class="sandbox-note" data-i18n="sandbox_note">{{t .T "sandbox_note"}}</p>
     </form>
 </div>
 
@@ -137,59 +119,6 @@
             var form = content.closest('form');
             var sel = form && form.querySelector('.script-shell-select');
             if (sel) sel.value = detectShell(content.value);
-        });
-    });
-
-    function tr(key, fallback) {
-        var state = window.envHubI18n || {};
-        var dict = state.translations && state.translations[state.lang];
-        return dict && dict[key] !== undefined ? dict[key] : fallback;
-    }
-
-    document.querySelectorAll('.simulate-script').forEach(function(button){
-        button.addEventListener('click', function(){
-            var form = document.getElementById(button.dataset.form);
-            var output = button.closest('.card-body, .add-form').querySelector('.simulation-output');
-            if (!form || !output) return;
-
-            var content = form.querySelector('.script-content');
-            var shell = form.querySelector('.script-shell-select');
-            var network = button.closest('.action-group').querySelector('.simulate-network');
-            var body = new URLSearchParams();
-            body.set('content', content ? content.value : '');
-            body.set('shell', shell ? shell.value : 'sh');
-            body.set('network', network && network.checked ? 'true' : 'false');
-
-            var originalText = button.textContent;
-            var runningText = tr('simulate_running', 'Running...');
-            output.className = 'simulation-output show';
-            output.textContent = runningText;
-            button.disabled = true;
-            button.textContent = runningText;
-
-            fetch('/admin/scripts/simulate', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: body.toString()
-            }).then(function(resp){
-                return resp.json().catch(function(){
-                    return {ok: false, exit_code: -1, output: '', error: 'invalid response'};
-                });
-            }).then(function(result){
-                var prefix = result.ok ? tr('simulate_success', 'Simulation passed') : tr('simulate_failed', 'Simulation failed');
-                var text = prefix + ' (exit ' + result.exit_code + ')';
-                if (result.sandbox) text += '\n' + result.sandbox;
-                if (result.error) text += '\n' + result.error;
-                if (result.output) text += '\n\n' + result.output;
-                output.textContent = text;
-                output.className = 'simulation-output show ' + (result.ok ? 'ok' : 'fail');
-            }).catch(function(err){
-                output.textContent = tr('simulate_failed', 'Simulation failed') + '\n' + err;
-                output.className = 'simulation-output show fail';
-            }).finally(function(){
-                button.disabled = false;
-                button.textContent = originalText;
-            });
         });
     });
 

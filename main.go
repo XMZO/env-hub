@@ -152,7 +152,6 @@ func main() {
 	mux.HandleFunc("POST /admin/login", loginRL.handlerFunc(a.handleLogin))
 	mux.HandleFunc("GET /admin/logout", a.handleLogout)
 	mux.HandleFunc("GET /admin", a.requireAuth(a.handleAdmin))
-	mux.HandleFunc("POST /admin/scripts/simulate", a.requireAuth(a.handleScriptSimulation))
 	mux.HandleFunc("POST /admin", a.requireAuth(a.handleAdminPost))
 
 	// Module routes

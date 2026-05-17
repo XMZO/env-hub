@@ -45,12 +45,6 @@
   "script_desc_placeholder": "e.g. Install SSH public keys",
   "script_shell": "Shell",
   "script_content": "Script Content",
-  "simulate_run": "Simulate",
-  "simulate_running": "Running...",
-  "simulate_success": "Simulation passed",
-  "simulate_failed": "Simulation failed",
-  "simulate_allow_network": "Allow network",
-  "sandbox_note": "Sandbox: Docker container, network off by default, non-root, no host mounts, read-only root filesystem.",
   "updated_at": "updated",
   "lang_switch": "中文",
   "lang_code": "zh"

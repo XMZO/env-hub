@@ -45,12 +45,6 @@
   "script_desc_placeholder": "例如：安装 SSH 公钥",
   "script_shell": "Shell",
   "script_content": "脚本内容",
-  "simulate_run": "模拟运行",
-  "simulate_running": "运行中...",
-  "simulate_success": "模拟通过",
-  "simulate_failed": "模拟失败",
-  "simulate_allow_network": "允许联网",
-  "sandbox_note": "沙盒：Docker 容器、默认断网、非 root、无主机挂载、只读根文件系统。",
   "updated_at": "更新于",
   "lang_switch": "English",
   "lang_code": "en"

@@ -8,10 +8,8 @@ services:
       - ADMIN_TOKEN=${ADMIN_TOKEN}
       - LISTEN_ADDR=:9800
       - TURNSTILE_KEYS=${TURNSTILE_KEYS}
-      - ENV_HUB_IMAGE=ghcr.io/xmzo/env-hub:latest
     volumes:
       - ./data:/data
-      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - app-net
 

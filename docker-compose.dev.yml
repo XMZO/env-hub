@@ -1,7 +1,6 @@
 services:
   env-hub:
     build: .
-    image: env-hub:dev
     restart: unless-stopped
     ports:
       - "9800:9800"
@@ -9,7 +8,5 @@ services:
       - ADMIN_TOKEN=${ADMIN_TOKEN}
       - LISTEN_ADDR=:9800
       - TURNSTILE_KEYS=${TURNSTILE_KEYS}
-      - ENV_HUB_IMAGE=env-hub:dev
     volumes:
       - ./data:/data
-      - /var/run/docker.sock:/var/run/docker.sock
