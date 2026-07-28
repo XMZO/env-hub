@@ -10,11 +10,11 @@ import (
 )
 
 type KeysModule struct {
-	db         *sql.DB
-	listKeys   *sql.Stmt
-	addKey     *sql.Stmt
-	deleteKey  *sql.Stmt
-	allText    *sql.Stmt
+	db        *sql.DB
+	listKeys  *sql.Stmt
+	addKey    *sql.Stmt
+	deleteKey *sql.Stmt
+	allText   *sql.Stmt
 }
 
 type Key struct {
@@ -98,6 +98,9 @@ func (m *KeysModule) AdminAction(action string, r *http.Request) error {
 			return nil
 		}
 		_, err := m.addKey.Exec(name, key)
+		if err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			return adminBadRequest("this key is already registered")
+		}
 		return err
 
 	case "delete":

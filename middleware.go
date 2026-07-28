@@ -2,6 +2,10 @@ package main
 
 import (
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/hex"
 	"net/http"
 	"strings"
 	"sync"
@@ -10,12 +14,26 @@ import (
 
 // --- Auth ---
 
-func setAuthCookie(w http.ResponseWriter, token string) {
+// deriveSessionToken derives the auth cookie value from the admin token, so
+// the cookie never contains the token itself. Changing ADMIN_TOKEN
+// invalidates all sessions.
+func deriveSessionToken(adminToken string) string {
+	mac := hmac.New(sha256.New, []byte(adminToken))
+	mac.Write([]byte("env-hub admin session v1"))
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+func tokenEqual(a, b string) bool {
+	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
+}
+
+func setAuthCookie(w http.ResponseWriter, r *http.Request, session string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "admin_token",
-		Value:    token,
+		Value:    session,
 		Path:     "/admin",
 		HttpOnly: true,
+		Secure:   requestScheme(r) == "https",
 		MaxAge:   int(30 * 24 * time.Hour / time.Second),
 		SameSite: http.SameSiteLaxMode,
 	})
@@ -23,14 +41,14 @@ func setAuthCookie(w http.ResponseWriter, token string) {
 
 func (a *app) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if token := r.URL.Query().Get("token"); token == a.adminToken {
-			setAuthCookie(w, a.adminToken)
+		if token := r.URL.Query().Get("token"); token != "" && tokenEqual(token, a.adminToken) {
+			setAuthCookie(w, r, a.sessionToken)
 			http.Redirect(w, r, "/admin", http.StatusFound)
 			return
 		}
 
 		cookie, err := r.Cookie("admin_token")
-		if err != nil || cookie.Value != a.adminToken {
+		if err != nil || !tokenEqual(cookie.Value, a.sessionToken) {
 			http.Redirect(w, r, "/admin/login", http.StatusFound)
 			return
 		}
@@ -64,8 +82,8 @@ var gzPool = sync.Pool{
 
 type gzipResponseWriter struct {
 	http.ResponseWriter
-	gz          *gzip.Writer
-	sniffDone   bool
+	gz        *gzip.Writer
+	sniffDone bool
 }
 
 func (w *gzipResponseWriter) Write(b []byte) (int, error) {
@@ -99,4 +117,3 @@ func gzipMiddleware(next http.Handler) http.Handler {
 		gzPool.Put(gz)
 	})
 }
-

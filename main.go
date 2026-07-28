@@ -26,6 +26,7 @@ type app struct {
 	scripts       *ScriptsModule
 	i18n          *I18n
 	adminToken    string
+	sessionToken  string
 	tmpl          *template.Template
 	turnstileSite string // Cloudflare Turnstile site key (empty = disabled)
 	turnstileKey  string // Cloudflare Turnstile secret key
@@ -65,6 +66,12 @@ func main() {
 		}
 	}
 
+	// Trusted proxies for client-IP / scheme headers (default: private + Cloudflare)
+	if tp := strings.TrimSpace(os.Getenv("TRUSTED_PROXIES")); tp != "" {
+		trustedProxies = parseTrustedProxies(tp)
+		log.Printf("Trusted proxies: %s", tp)
+	}
+
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
 		log.Fatalf("Failed to create data directory: %v", err)
 	}
@@ -102,12 +109,7 @@ func main() {
 				}
 				return key
 			},
-			"truncate": func(s string, n int) string {
-				if len(s) <= n {
-					return s
-				}
-				return s[:n] + "..."
-			},
+			"truncate": truncateRunes,
 			"renderModule": func(mv ModuleView) template.HTML {
 				var buf bytes.Buffer
 				if err := tmpl.ExecuteTemplate(&buf, mv.Template, mv); err != nil {
@@ -131,6 +133,7 @@ func main() {
 		scripts:       scriptsModule,
 		i18n:          i18n,
 		adminToken:    adminToken,
+		sessionToken:  deriveSessionToken(adminToken),
 		tmpl:          tmpl,
 		turnstileSite: turnstileSite,
 		turnstileKey:  turnstileKey,
@@ -190,13 +193,23 @@ func main() {
 	srv.Shutdown(ctx)
 }
 
+// truncateRunes shortens s to at most n characters (not bytes), so multi-byte
+// UTF-8 text is never cut mid-character.
+func truncateRunes(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return string(r[:n]) + "..."
+}
+
 func isCurl(r *http.Request) bool {
 	return strings.HasPrefix(r.Header.Get("User-Agent"), "curl/")
 }
 
 func (a *app) scriptFallback(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet && !strings.Contains(r.URL.Path[1:], "/") {
+		if (r.Method == http.MethodGet || r.Method == http.MethodHead) && !strings.Contains(r.URL.Path[1:], "/") {
 			// Try serving as a script route (including "/" itself)
 			if a.scripts.ServeScript(w, r, r.URL.Path) {
 				return
@@ -212,11 +225,7 @@ func (a *app) scriptFallback(next http.Handler) http.Handler {
 }
 
 func (a *app) serveHelp(w http.ResponseWriter, r *http.Request) {
-	scheme := "https"
-	if r.TLS == nil && r.Header.Get("X-Forwarded-Proto") == "" {
-		scheme = "http"
-	}
-	base := scheme + "://" + r.Host
+	base := requestScheme(r) + "://" + r.Host
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")

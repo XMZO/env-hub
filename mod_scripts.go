@@ -105,10 +105,7 @@ func (m *ScriptsModule) ServeScript(w http.ResponseWriter, r *http.Request, path
 	}
 
 	// Replace __BASE_URL__ placeholder with actual host
-	scheme := "https"
-	if r.TLS == nil && r.Header.Get("X-Forwarded-Proto") == "" {
-		scheme = "http"
-	}
+	scheme := requestScheme(r)
 
 	// Detect client IP and classify as v4 or v6 (only if valid, to prevent header injection)
 	ip, ipv4, ipv6 := "", "", ""

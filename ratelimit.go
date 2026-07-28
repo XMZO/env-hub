@@ -1,15 +1,14 @@
 package main
 
 import (
-	"net"
 	"net/http"
 	"sync"
 	"time"
 )
 
 type visitor struct {
-	count    int
-	resetAt  time.Time
+	count   int
+	resetAt time.Time
 }
 
 type rateLimiter struct {
@@ -79,16 +78,4 @@ func (rl *rateLimiter) middleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
-}
-
-func realIP(r *http.Request) string {
-	// CF / reverse proxy
-	if ip := r.Header.Get("CF-Connecting-IP"); ip != "" {
-		return ip
-	}
-	if ip := r.Header.Get("X-Real-IP"); ip != "" {
-		return ip
-	}
-	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
-	return ip
 }
