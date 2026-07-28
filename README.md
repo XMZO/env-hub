@@ -15,7 +15,7 @@ curl -fsSL https://env.moe/ssh | sh
 
 ## 快速开始
 
-### Docker Compose（推荐）
+### Docker Compose（推荐，使用预构建镜像）
 
 ```bash
 cp .env.example .env
@@ -25,12 +25,12 @@ docker compose up -d
 
 访问 `http://localhost:9800`，管理后台在 `http://localhost:9800/admin`。
 
-### 使用预构建镜像
+### 本地构建镜像
 
 ```bash
 cp .env.example .env
 # 编辑 .env，设置 ADMIN_TOKEN
-docker compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.dev.yml up -d
 ```
 
 ### 本地开发
@@ -48,6 +48,8 @@ go run .
 | `ADMIN_TOKEN` | 是 | - | 管理后台访问 Token |
 | `LISTEN_ADDR` | 否 | `:9800` | 监听地址 |
 | `DATA_DIR` | 否 | `./data` | SQLite 数据文件目录 |
+| `TURNSTILE_KEYS` | 否 | - | Cloudflare Turnstile，格式 `sitekey,secret`，留空关闭 |
+| `TRUSTED_PROXIES` | 否 | `private,cloudflare` | 信任 `CF-Connecting-IP` / `X-Real-IP` 头的来源。逗号分隔的 CIDR，或关键字 `private`、`cloudflare`、`*`（全部信任）、`none`（全部不信任） |
 
 ## 路由
 
